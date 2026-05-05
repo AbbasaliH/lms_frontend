@@ -81,7 +81,7 @@ export function RevenueChart({ data = mockData }: RevenueChartProps) {
                 borderRadius: '8px',
                 fontSize: '12px',
               }}
-              formatter={(value: number | undefined, name: string | undefined) => {
+              formatter={(value: any, name: any) => {
                 if (!value) return ['0', name || 'Value'];
                 if (name === 'revenue') {
                   return [`₹${value.toLocaleString()}`, 'Revenue'];

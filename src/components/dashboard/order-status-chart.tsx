@@ -105,7 +105,7 @@ export function OrderStatusChart({ data = mockData }: OrderStatusChartProps) {
                 borderRadius: '8px',
                 fontSize: '12px',
               }}
-              formatter={(value: number | undefined) => [value || 0, 'Orders']}
+              formatter={(value: any) => [value || 0, 'Orders']}
             />
             <Legend 
               verticalAlign="bottom" 

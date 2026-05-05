@@ -51,8 +51,6 @@ export const paymentsApi = {
   },
 
   downloadReceipt: async (paymentId: string): Promise<Blob> => {
-    return apiClient.get<Blob>(`/payments/${paymentId}/receipt`, {
-      responseType: 'blob',
-    });
+    return apiClient.getBlob(`/payments/${paymentId}/receipt`);
   },
 };

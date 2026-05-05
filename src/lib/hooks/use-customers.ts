@@ -39,10 +39,122 @@ export const useUpdateCustomer = () => {
   });
 };
 
-export const useCustomerProfile = () => {
+export const useCustomerProfile = (userId?: string) => {
   return useQuery({
-    queryKey: ['customerProfile'],
-    queryFn: customerApi.getProfile,
+    queryKey: ['customerProfile', userId],
+    queryFn: () => customerApi.getProfileByUserId(userId as string),
+    enabled: !!userId,
   });
 };
 
+export const useUpdateCustomerStatus = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) => customerApi.updateCustomerStatus(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: customerKeys.lists() });
+      toast.success('Customer status updated');
+    },
+  });
+};
+
+export const useUpdateCustomerTier = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, tier }: { id: string; tier: string }) => customerApi.updateCustomerTier(id, tier),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: customerKeys.lists() });
+      toast.success('Customer tier updated');
+    },
+  });
+};
+
+export const useUpdateLoyaltyPoints = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, points }: { id: string; points: number }) => customerApi.updateLoyaltyPoints(id, points),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: customerKeys.lists() });
+      toast.success('Loyalty points updated');
+    },
+  });
+};
+
+export const useVerifyCustomer = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => customerApi.verifyCustomer(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: customerKeys.lists() });
+      toast.success('Customer verified');
+    },
+  });
+};
+
+export const useDeleteCustomer = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => customerApi.deleteCustomer(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: customerKeys.lists() });
+      toast.success('Customer deleted');
+    },
+  });
+};
+
+export const useCustomerDashboardStats = () => {
+  return useQuery({
+    queryKey: ['customerStats'],
+    queryFn: customerApi.getCustomerDashboardStats,
+  });
+};
+
+export const useCustomerLTV = (customerId: string) => {
+  return useQuery({
+    queryKey: ['customerLTV', customerId],
+    queryFn: () => customerApi.getCustomerLTV(customerId),
+    enabled: !!customerId,
+  });
+};
+
+// Interactions
+
+export const useCustomerInteractions = () => {
+  return useQuery({
+    queryKey: ['customerInteractions'],
+    queryFn: customerApi.getInteractions,
+  });
+};
+
+export const useCreateInteraction = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: customerApi.createInteraction,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customerInteractions'] });
+      toast.success('Interaction created');
+    },
+  });
+};
+
+export const useUpdateInteractionStatus = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) => customerApi.updateInteractionStatus(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customerInteractions'] });
+      toast.success('Interaction status updated');
+    },
+  });
+};
+
+export const useAssignInteraction = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, assignedTo }: { id: string; assignedTo: string }) => customerApi.assignInteraction(id, assignedTo),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customerInteractions'] });
+      toast.success('Interaction assigned');
+    },
+  });
+};

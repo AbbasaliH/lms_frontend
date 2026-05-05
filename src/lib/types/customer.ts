@@ -122,8 +122,19 @@ export interface ApiCustomer {
   status: CustomerStatus;
   totalSpent: number;
   totalOrders: number;
+  completedOrders?: number;
+  averageOrderValue?: number;
   averageRating?: number;
   loyaltyPoints: number;
+  lifetimePoints?: number;
+  isVerified?: boolean;
+  isBusinessCustomer?: boolean;
+  isBlacklisted?: boolean;
+  user?: {
+    fullName: string;
+    email: string;
+    phoneNumber: string;
+  };
 }
 
 export interface CustomerFilters {

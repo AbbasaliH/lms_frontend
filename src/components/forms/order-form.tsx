@@ -55,7 +55,7 @@ export function OrderForm({ onSubmit, defaultValues, isSubmitting }: OrderFormPr
     status: 'ACTIVE',
   });
 
-  const customers = customersData?.data?.customers || [];
+  const customers = (customersData as any)?.data?.customers || [];
 
   const form = useForm<OrderFormData>({
     resolver: zodResolver(orderSchema),
@@ -96,7 +96,7 @@ export function OrderForm({ onSubmit, defaultValues, isSubmitting }: OrderFormPr
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {customers.map((customer) => (
+                    {customers.map((customer: any) => (
                       <SelectItem key={customer.id} value={customer.id}>
                         {customer.user.fullName}
                       </SelectItem>
@@ -179,12 +179,12 @@ export function OrderForm({ onSubmit, defaultValues, isSubmitting }: OrderFormPr
                   )}
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-12">
                   <FormField
                     control={form.control}
                     name={`items.${index}.serviceType`}
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="sm:col-span-6">
                         <FormLabel className="text-sm font-medium">Service Type</FormLabel>
                         <Select
                           onValueChange={(value) => {
@@ -218,7 +218,7 @@ export function OrderForm({ onSubmit, defaultValues, isSubmitting }: OrderFormPr
                     control={form.control}
                     name={`items.${index}.quantity`}
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="sm:col-span-3">
                         <FormLabel className="text-sm font-medium">Quantity</FormLabel>
                         <FormControl>
                           <Input
@@ -239,7 +239,7 @@ export function OrderForm({ onSubmit, defaultValues, isSubmitting }: OrderFormPr
                     control={form.control}
                     name={`items.${index}.price`}
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="sm:col-span-3">
                         <FormLabel className="text-sm font-medium">Price (₹)</FormLabel>
                         <FormControl>
                           <Input
@@ -262,8 +262,8 @@ export function OrderForm({ onSubmit, defaultValues, isSubmitting }: OrderFormPr
                   name={`items.${index}.notes`}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium">
-                        Notes{' '}
+                      <FormLabel className="flex items-center justify-between text-sm font-medium">
+                        <span>Notes</span>
                         <span className="text-xs text-muted-foreground font-normal">(Optional)</span>
                       </FormLabel>
                       <FormControl>
@@ -330,9 +330,9 @@ export function OrderForm({ onSubmit, defaultValues, isSubmitting }: OrderFormPr
                 name="assignedTo"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
-                      Assign to Delivery Personnel{' '}
-                      <span className="text-xs text-muted-foreground font-normal">(Optional)</span>
+                    <FormLabel className="flex items-center justify-between">
+                      <span className="truncate mr-2">Assign to Delivery Personnel</span>
+                      <span className="text-xs text-muted-foreground font-normal shrink-0">(Optional)</span>
                     </FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
@@ -363,9 +363,9 @@ export function OrderForm({ onSubmit, defaultValues, isSubmitting }: OrderFormPr
               name="specialInstructions"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>
-                    Special Instructions{' '}
-                    <span className="text-xs text-muted-foreground font-normal">(Optional)</span>
+                  <FormLabel className="flex items-center justify-between">
+                    <span>Special Instructions</span>
+                    <span className="text-xs text-muted-foreground font-normal shrink-0">(Optional)</span>
                   </FormLabel>
                   <FormControl>
                     <Textarea
