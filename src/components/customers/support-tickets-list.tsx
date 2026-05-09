@@ -21,7 +21,7 @@ export function SupportTicketsList({ customerId }: { customerId: string }) {
   const [description, setDescription] = useState('');
   const [type, setType] = useState('SUPPORT');
 
-  const interactions = data?.data?.interactions || [];
+  const interactions = (data as any)?.data?.interactions || [];
   // Filter for this customer if the API returns all, or if API endpoint is scoped, this handles it.
   const myTickets = interactions.filter((i: any) => i.customerId === customerId);
 

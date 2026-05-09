@@ -111,7 +111,8 @@ export class ApiClient {
       const error = await response.json().catch(() => ({
         message: 'An error occurred',
       }));
-      throw new Error(error.message || 'Request failed');
+      const errorMessage = error.message || error.error || JSON.stringify(error);
+      throw new Error(errorMessage || 'Request failed');
     }
 
     return response.json();

@@ -18,7 +18,25 @@ import { Loader2, TrendingDown, TrendingUp, Minus } from 'lucide-react';
 export function BudgetComparisonChart() {
   const { data, isLoading } = useBudgetComparison();
 
-  const chartData = data?.data || [];
+  const rawData = data?.data || [];
+  
+  // Map backend fields to chart-friendly format
+  const chartData = rawData.map((item) => {
+    const variance = item.allocatedAmount - item.spentAmount;
+    const variancePercent = item.allocatedAmount > 0 
+      ? Math.round((variance / item.allocatedAmount) * 100) 
+      : 0;
+    
+    return {
+      department: item.name,
+      budgeted: item.allocatedAmount,
+      actual: item.spentAmount,
+      variance,
+      variancePercent,
+      status: item.utilizationPercent > 100 ? 'over' : item.utilizationPercent > 90 ? 'on-track' : 'under',
+      utilizationPercent: item.utilizationPercent,
+    };
+  });
 
   const getStatusBadge = (status: string, variance: number) => {
     if (status === 'under') {
@@ -48,7 +66,7 @@ export function BudgetComparisonChart() {
     <Card>
       <CardHeader>
         <CardTitle>Budget vs Actual</CardTitle>
-        <CardDescription>Compare actual spending against budgeted amounts by department</CardDescription>
+        <CardDescription>Compare actual spending against budgeted amounts</CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -105,7 +123,7 @@ export function BudgetComparisonChart() {
             </div>
 
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold">Department Summary</h4>
+              <h4 className="text-sm font-semibold">Budget Summary</h4>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {chartData.map((dept, index) => (
                   <div key={index} className="rounded-lg border bg-card p-3 space-y-2">
@@ -124,8 +142,8 @@ export function BudgetComparisonChart() {
                       </div>
                       <div className="flex justify-between pt-1 border-t">
                         <span className="text-muted-foreground">Variance:</span>
-                        <span className={`font-semibold ${dept.variance > 0 ? 'text-destructive' : 'text-success'}`}>
-                          {dept.variance > 0 ? '+' : ''}₹{dept.variance.toLocaleString()} ({dept.variancePercent > 0 ? '+' : ''}{dept.variancePercent}%)
+                        <span className={`font-semibold ${dept.variance >= 0 ? 'text-success' : 'text-destructive'}`}>
+                          {dept.variance >= 0 ? '+' : ''}₹{dept.variance.toLocaleString()} ({dept.variancePercent >= 0 ? '+' : ''}{dept.variancePercent}%)
                         </span>
                       </div>
                     </div>

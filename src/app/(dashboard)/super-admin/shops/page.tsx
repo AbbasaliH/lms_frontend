@@ -2,11 +2,7 @@
 
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { mockShops } from '@/lib/mock-data';
-import { Plus } from 'lucide-react';
-import { format } from 'date-fns';
+import { Plus, Store } from 'lucide-react';
 
 export default function ShopsPage() {
   return (
@@ -18,7 +14,7 @@ export default function ShopsPage() {
             Manage all shops across the platform
           </p>
         </div>
-        <Button>
+        <Button disabled>
           <Plus className="mr-2 h-4 w-4" />
           Add Shop
         </Button>
@@ -29,40 +25,13 @@ export default function ShopsPage() {
           <h3 className="text-lg font-semibold">All Shops</h3>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Shop Name</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Subscription</TableHead>
-                <TableHead>Revenue</TableHead>
-                <TableHead>Joined</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {mockShops.map((shop) => (
-                <TableRow key={shop.id}>
-                  <TableCell className="font-medium">{shop.name}</TableCell>
-                  <TableCell>{shop.address}</TableCell>
-                  <TableCell>{shop.phone}</TableCell>
-                  <TableCell>
-                    <Badge variant={shop.status === 'active' ? 'default' : 'secondary'}>
-                      {shop.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={shop.subscriptionStatus === 'active' ? 'default' : 'secondary'}>
-                      {shop.subscriptionStatus}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>${shop.revenue.toLocaleString()}</TableCell>
-                  <TableCell>{format(shop.createdAt, 'MMM dd, yyyy')}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <Store className="h-12 w-12 text-muted-foreground mb-4 opacity-20" />
+            <p className="text-muted-foreground font-medium">Shop management is not yet available.</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Backend API endpoints for shop CRUD operations have not been implemented.
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>

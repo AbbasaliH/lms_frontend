@@ -1,8 +1,6 @@
 'use client';
 
-import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   AreaChart, 
   Area, 
@@ -15,13 +13,11 @@ import {
 } from 'recharts';
 import { useRevenueExpenseTrends } from '@/lib/hooks/use-finance';
 import { Loader2 } from 'lucide-react';
-import type { TimePeriod } from '@/lib/types/finance';
 
 export function RevenueExpenseChart() {
-  const [period, setPeriod] = useState<TimePeriod>('monthly');
-  const { data, isLoading } = useRevenueExpenseTrends(period);
+  const { data, isLoading } = useRevenueExpenseTrends();
 
-  const chartData = data?.data || [];
+  const chartData = data?.data?.trends || [];
 
   return (
     <Card>
@@ -31,14 +27,6 @@ export function RevenueExpenseChart() {
             <CardTitle>Revenue vs Expenses</CardTitle>
             <CardDescription>Track your revenue and expense trends over time</CardDescription>
           </div>
-          <Tabs value={period} onValueChange={(value) => setPeriod(value as TimePeriod)}>
-            <TabsList>
-              <TabsTrigger value="weekly">Week</TabsTrigger>
-              <TabsTrigger value="monthly">Month</TabsTrigger>
-              <TabsTrigger value="quarterly">Quarter</TabsTrigger>
-              <TabsTrigger value="yearly">Year</TabsTrigger>
-            </TabsList>
-          </Tabs>
         </div>
       </CardHeader>
       <CardContent>

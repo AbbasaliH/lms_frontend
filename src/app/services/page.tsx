@@ -151,9 +151,9 @@ export default function ServicesListingPage() {
                     </CardContent>
                     <CardFooter className="pt-0 pb-6 px-6">
                       <Button className="w-full font-semibold" variant="outline" onClick={() => {
-                        alert("In a real app, this would add the service to your order!");
+                        window.location.href = '/admin/orders';
                       }}>
-                        Add to Order
+                        View in Dashboard
                       </Button>
                     </CardFooter>
                   </Card>

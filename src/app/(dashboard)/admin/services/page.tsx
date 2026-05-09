@@ -81,9 +81,10 @@ export default function ServicesPage() {
     inactive: data?.data?.filter(s => !s.isActive).length || 0,
   };
 
-  const handleDelete = () => {
-    if (serviceToDelete) {
-      deleteMutation.mutate(serviceToDelete, {
+  const handleDelete = (id?: string) => {
+    const targetId = id || serviceToDelete;
+    if (targetId) {
+      deleteMutation.mutate(targetId, {
         onSuccess: () => setServiceToDelete(null)
       });
     }
@@ -264,8 +265,7 @@ export default function ServicesPage() {
                                   <AlertDialogAction 
                                     className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                                     onClick={() => {
-                                      setServiceToDelete(service.id);
-                                      setTimeout(() => handleDelete(), 0);
+                                      handleDelete(service.id);
                                     }}
                                   >
                                     {deleteMutation.isPending && serviceToDelete === service.id ? (

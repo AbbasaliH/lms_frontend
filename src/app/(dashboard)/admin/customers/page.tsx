@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import {
   Users,
@@ -37,8 +38,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { AddCustomerDialog } from '@/components/customers/add-customer-dialog';
 import { CustomerTierBadge } from '@/components/customers/customer-tier-badge';
-import { useCustomers } from '@/lib/hooks/use-customers';
+import { useCustomers, useUpdateCustomerStatus } from '@/lib/hooks/use-customers';
 import type { ApiCustomer } from '@/lib/types/customer';
+import { toast } from 'sonner';
 
 const getStatusBadge = (status: string, isBlacklisted: boolean) => {
   if (isBlacklisted) {
@@ -60,6 +62,7 @@ const getStatusBadge = (status: string, isBlacklisted: boolean) => {
 };
 
 export default function CustomersPage() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const limit = 10;
@@ -69,6 +72,8 @@ export default function CustomersPage() {
     limit,
     search: searchQuery || undefined,
   });
+
+  const updateStatusMutation = useUpdateCustomerStatus();
 
   const customers = (data as any)?.data?.customers || [];
   const pagination = (data as any)?.data?.pagination;
@@ -151,9 +156,17 @@ export default function CustomersPage() {
             className="pl-9"
           />
         </div>
-        <Button variant="outline" className="w-full sm:w-auto">
+        <Button
+          variant="outline"
+          className="w-full sm:w-auto"
+          onClick={() => {
+            setSearchQuery('');
+            setPage(1);
+          }}
+          disabled={!searchQuery}
+        >
           <Filter className="h-4 w-4" />
-          Filter
+          Clear
         </Button>
       </div>
 
@@ -259,7 +272,7 @@ export default function CustomersPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {getStatusBadge(customer.status, customer.isBlacklisted)}
+                        {getStatusBadge(customer.status, !!customer.isBlacklisted)}
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
@@ -271,16 +284,44 @@ export default function CustomersPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem>View Profile</DropdownMenuItem>
-                            <DropdownMenuItem>Edit Customer</DropdownMenuItem>
-                            <DropdownMenuItem>View Orders</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => router.push(`/admin/customers?profile=${customer.id}`)}>
+                              View Profile
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => router.push(`/admin/customers?edit=${customer.id}`)}>
+                              Edit Customer
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => router.push(`/admin/orders?customer=${customer.id}`)}>
+                              View Orders
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             {customer.isBlacklisted ? (
-                              <DropdownMenuItem className="text-success">
+                              <DropdownMenuItem
+                                className="text-success"
+                                onClick={() =>
+                                  updateStatusMutation.mutate(
+                                    { id: customer.id, status: 'ACTIVE' },
+                                    {
+                                      onSuccess: () => toast.success('Customer removed from blacklist'),
+                                      onError: () => toast.error('Failed to remove from blacklist'),
+                                    }
+                                  )
+                                }
+                              >
                                 Remove from Blacklist
                               </DropdownMenuItem>
                             ) : (
-                              <DropdownMenuItem className="text-destructive">
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() =>
+                                  updateStatusMutation.mutate(
+                                    { id: customer.id, status: 'BLACKLISTED' },
+                                    {
+                                      onSuccess: () => toast.success('Customer added to blacklist'),
+                                      onError: () => toast.error('Failed to add to blacklist'),
+                                    }
+                                  )
+                                }
+                              >
                                 Add to Blacklist
                               </DropdownMenuItem>
                             )}

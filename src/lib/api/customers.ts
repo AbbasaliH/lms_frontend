@@ -86,5 +86,18 @@ export const customerApi = {
 
   assignInteraction: async (id: string, assignedTo: string) => {
     return apiClient.patch(`/customers/interactions/${id}/assign`, { assignedTo });
-  }
+  },
+
+  // ==================== ANALYTICS ====================
+  getTopCustomers: async () => {
+    return apiClient.get('/customers/top-customers');
+  },
+
+  getCustomerSegments: async () => {
+    return apiClient.get('/customers/segments');
+  },
+
+  getChurnRiskCustomers: async () => {
+    return apiClient.get('/customers/churn-risk');
+  },
 };

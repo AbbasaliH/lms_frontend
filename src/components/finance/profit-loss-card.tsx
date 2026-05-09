@@ -44,25 +44,8 @@ export function ProfitLossCard() {
             </div>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Laundry Services</span>
-                <span className="font-medium">₹{plData.revenue.laundryServices.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Dry Cleaning</span>
-                <span className="font-medium">₹{plData.revenue.dryCleaningServices.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Ironing Services</span>
-                <span className="font-medium">₹{plData.revenue.ironingServices.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Additional Services</span>
-                <span className="font-medium">₹{plData.revenue.additionalServices.toLocaleString()}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between font-semibold">
-                <span>Total Revenue</span>
-                <span className="text-success">₹{plData.revenue.total.toLocaleString()}</span>
+                <span className="text-muted-foreground">Total Revenue</span>
+                <span className="font-medium">₹{plData.revenue.toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -75,41 +58,8 @@ export function ProfitLossCard() {
             </div>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Materials</span>
-                <span className="font-medium">₹{plData.expenses.materials.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Detergents</span>
-                <span className="font-medium">₹{plData.expenses.detergents.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Labor & Wages</span>
-                <span className="font-medium">₹{plData.expenses.labor.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Utilities</span>
-                <span className="font-medium">₹{plData.expenses.utilities.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Marketing</span>
-                <span className="font-medium">₹{plData.expenses.marketing.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Rent</span>
-                <span className="font-medium">₹{plData.expenses.rent.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Maintenance</span>
-                <span className="font-medium">₹{plData.expenses.maintenance.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Other</span>
-                <span className="font-medium">₹{plData.expenses.other.toLocaleString()}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between font-semibold">
-                <span>Total Expenses</span>
-                <span className="text-destructive">₹{plData.expenses.total.toLocaleString()}</span>
+                <span className="text-muted-foreground">Total Expenses</span>
+                <span className="font-medium">₹{plData.expenses.toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -123,8 +73,8 @@ export function ProfitLossCard() {
             <span className="font-semibold">₹{plData.grossProfit.toLocaleString()}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Operating Income</span>
-            <span className="font-semibold">₹{plData.operatingIncome.toLocaleString()}</span>
+            <span className="text-muted-foreground">Gross Profit Margin</span>
+            <span className="font-semibold">{plData.grossProfitMargin.toFixed(2)}%</span>
           </div>
           <Separator />
           <div className="rounded-lg bg-muted/50 p-4">
@@ -136,9 +86,9 @@ export function ProfitLossCard() {
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-sm text-muted-foreground">Profit Margin</p>
+                <p className="text-sm text-muted-foreground">Net Profit Margin</p>
                 <p className="text-2xl font-bold text-success">
-                  {plData.profitMargin.toFixed(2)}%
+                  {plData.netProfitMargin.toFixed(2)}%
                 </p>
               </div>
             </div>

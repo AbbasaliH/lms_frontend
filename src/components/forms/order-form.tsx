@@ -25,12 +25,9 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, Plus, Trash2, Calendar } from 'lucide-react';
-import { mockDeliveryBoys } from '@/lib/mock-data';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { useCustomers } from '@/lib/hooks/use-customers';
+import { useProducts } from '@/lib/hooks/use-products';
 
 interface OrderFormProps {
   onSubmit: (data: OrderFormData) => void | Promise<void>;
@@ -38,17 +35,7 @@ interface OrderFormProps {
   isSubmitting?: boolean;
 }
 
-const serviceTypes = [
-  { value: 'Wash & Fold', price: 10 },
-  { value: 'Dry Cleaning', price: 20 },
-  { value: 'Ironing', price: 3 },
-  { value: 'Shoe Cleaning', price: 15 },
-  { value: 'Curtain Cleaning', price: 25 },
-];
-
 export function OrderForm({ onSubmit, defaultValues, isSubmitting }: OrderFormProps) {
-  const [selectedDate, setSelectedDate] = useState<Date>();
-
   // Fetch customers from API
   const { data: customersData, isLoading: isLoadingCustomers } = useCustomers({
     limit: 100,
@@ -57,13 +44,22 @@ export function OrderForm({ onSubmit, defaultValues, isSubmitting }: OrderFormPr
 
   const customers = (customersData as any)?.data?.customers || [];
 
+  // Fetch active products from API
+  const { data: productsData, isLoading: isLoadingProducts } = useProducts({
+    isActive: true,
+    limit: 100,
+  });
+
+  const products = (productsData as any)?.data || [];
+
   const form = useForm<OrderFormData>({
     resolver: zodResolver(orderSchema),
     defaultValues: {
-      customerId: '',
-      items: [{ serviceType: '', quantity: 1, price: 0, notes: '' }],
-      paymentMethod: undefined,
-      assignedTo: '',
+      userId: '',
+      productId: '',
+      addressId: '',
+      items: [{ productId: '', clothType: '', quantity: 1, unitPrice: 0, addOns: [] }],
+      totalAmount: 0,
       specialInstructions: '',
       ...defaultValues,
     },
@@ -74,31 +70,41 @@ export function OrderForm({ onSubmit, defaultValues, isSubmitting }: OrderFormPr
     name: 'items',
   });
 
+  const selectedProductId = form.watch('productId');
+  const selectedProduct = products.find((p: any) => p.id === selectedProductId);
+
   const calculateTotal = () => {
     const items = form.watch('items');
-    return items.reduce((sum, item) => sum + (item.quantity * item.price || 0), 0);
+    return items.reduce((sum, item) => sum + (item.quantity * item.unitPrice || 0), 0);
+  };
+
+  // Auto-update totalAmount when items change
+  const handleItemChange = () => {
+    const total = calculateTotal();
+    form.setValue('totalAmount', total);
   };
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {/* Customer & Product */}
         <div className="grid gap-4 md:grid-cols-2">
           <FormField
             control={form.control}
-            name="customerId"
+            name="userId"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Customer</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoadingCustomers}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder={isLoadingCustomers ? "Loading customers..." : "Select customer"} />
+                      <SelectValue placeholder={isLoadingCustomers ? 'Loading customers...' : 'Select customer'} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
                     {customers.map((customer: any) => (
-                      <SelectItem key={customer.id} value={customer.id}>
-                        {customer.user.fullName}
+                      <SelectItem key={customer.id} value={customer.userId || customer.id}>
+                        {customer.user?.fullName || customer.fullName || 'Unknown'}
                       </SelectItem>
                     ))}
                     {customers.length === 0 && !isLoadingCustomers && (
@@ -115,48 +121,54 @@ export function OrderForm({ onSubmit, defaultValues, isSubmitting }: OrderFormPr
 
           <FormField
             control={form.control}
-            name="deliveryDate"
+            name="productId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Delivery Date</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          'w-full pl-3 text-left font-normal',
-                          !field.value && 'text-muted-foreground'
-                        )}
-                      >
-                        {field.value ? (
-                          format(field.value, 'PPP')
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
-                        <Calendar className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <input
-                      type="date"
-                      className="p-3 w-full"
-                      min={new Date().toISOString().split('T')[0]}
-                      onChange={(e) => {
-                        const date = new Date(e.target.value);
-                        field.onChange(date);
-                        setSelectedDate(date);
-                      }}
-                    />
-                  </PopoverContent>
-                </Popover>
+                <FormLabel>Product / Service</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoadingProducts}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder={isLoadingProducts ? 'Loading products...' : 'Select product'} />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {products.map((product: any) => (
+                      <SelectItem key={product.id} value={product.id}>
+                        {product.name} — ₹{product.price}
+                      </SelectItem>
+                    ))}
+                    {products.length === 0 && !isLoadingProducts && (
+                      <SelectItem value="no-products" disabled>
+                        No active products found
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                <FormDescription className="text-xs">
+                  {selectedProduct?.description || 'Select a service/product for this order'}
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
           />
         </div>
 
+        <FormField
+          control={form.control}
+          name="addressId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Address ID</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter address ID (optional)" {...field} />
+              </FormControl>
+              <FormDescription className="text-xs">Optional delivery address reference</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Order Items */}
         <Card>
           <CardHeader className="pb-4">
             <CardTitle className="text-base font-semibold">Order Items</CardTitle>
@@ -182,29 +194,30 @@ export function OrderForm({ onSubmit, defaultValues, isSubmitting }: OrderFormPr
                 <div className="grid gap-4 sm:grid-cols-12">
                   <FormField
                     control={form.control}
-                    name={`items.${index}.serviceType`}
+                    name={`items.${index}.productId`}
                     render={({ field }) => (
-                      <FormItem className="sm:col-span-6">
-                        <FormLabel className="text-sm font-medium">Service Type</FormLabel>
+                      <FormItem className="sm:col-span-4">
+                        <FormLabel className="text-sm font-medium">Product</FormLabel>
                         <Select
                           onValueChange={(value) => {
                             field.onChange(value);
-                            const service = serviceTypes.find((s) => s.value === value);
-                            if (service) {
-                              form.setValue(`items.${index}.price`, service.price);
+                            const product = products.find((p: any) => p.id === value);
+                            if (product) {
+                              form.setValue(`items.${index}.unitPrice`, product.price);
+                              handleItemChange();
                             }
                           }}
                           defaultValue={field.value}
                         >
                           <FormControl>
                             <SelectTrigger className="h-10">
-                              <SelectValue placeholder="Select service" />
+                              <SelectValue placeholder="Select product" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {serviceTypes.map((service) => (
-                              <SelectItem key={service.value} value={service.value}>
-                                {service.value} (₹{service.price})
+                            {products.map((product: any) => (
+                              <SelectItem key={product.id} value={product.id}>
+                                {product.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -216,10 +229,43 @@ export function OrderForm({ onSubmit, defaultValues, isSubmitting }: OrderFormPr
 
                   <FormField
                     control={form.control}
+                    name={`items.${index}.clothType`}
+                    render={({ field }) => (
+                      <FormItem className="sm:col-span-4">
+                        <FormLabel className="text-sm font-medium">Cloth Type</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="h-10">
+                              <SelectValue placeholder="Select cloth type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {(selectedProduct?.clothTypes || []).length > 0 ? (
+                              selectedProduct.clothTypes.map((type: string) => (
+                                <SelectItem key={type} value={type}>
+                                  {type}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              ['Shirt', 'Pant', 'T-Shirt', 'Suit', 'Dress', 'Saree', 'Curtain', 'Bed Sheet', 'Blanket', 'Jacket', 'Other'].map((type) => (
+                                <SelectItem key={type} value={type}>
+                                  {type}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
                     name={`items.${index}.quantity`}
                     render={({ field }) => (
-                      <FormItem className="sm:col-span-3">
-                        <FormLabel className="text-sm font-medium">Quantity</FormLabel>
+                      <FormItem className="sm:col-span-2">
+                        <FormLabel className="text-sm font-medium">Qty</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
@@ -227,7 +273,10 @@ export function OrderForm({ onSubmit, defaultValues, isSubmitting }: OrderFormPr
                             placeholder="1"
                             className="h-10"
                             {...field}
-                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 1)}
+                            onChange={(e) => {
+                              field.onChange(parseFloat(e.target.value) || 1);
+                              handleItemChange();
+                            }}
                           />
                         </FormControl>
                         <FormMessage />
@@ -237,9 +286,9 @@ export function OrderForm({ onSubmit, defaultValues, isSubmitting }: OrderFormPr
 
                   <FormField
                     control={form.control}
-                    name={`items.${index}.price`}
+                    name={`items.${index}.unitPrice`}
                     render={({ field }) => (
-                      <FormItem className="sm:col-span-3">
+                      <FormItem className="sm:col-span-2">
                         <FormLabel className="text-sm font-medium">Price (₹)</FormLabel>
                         <FormControl>
                           <Input
@@ -248,7 +297,10 @@ export function OrderForm({ onSubmit, defaultValues, isSubmitting }: OrderFormPr
                             placeholder="0"
                             className="h-10"
                             {...field}
-                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                            onChange={(e) => {
+                              field.onChange(parseFloat(e.target.value) || 0);
+                              handleItemChange();
+                            }}
                           />
                         </FormControl>
                         <FormMessage />
@@ -259,20 +311,50 @@ export function OrderForm({ onSubmit, defaultValues, isSubmitting }: OrderFormPr
 
                 <FormField
                   control={form.control}
-                  name={`items.${index}.notes`}
+                  name={`items.${index}.addOns`}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center justify-between text-sm font-medium">
-                        <span>Notes</span>
-                        <span className="text-xs text-muted-foreground font-normal">(Optional)</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="Special instructions for this item" 
-                          className="h-10"
-                          {...field} 
-                        />
-                      </FormControl>
+                      <FormLabel className="text-sm font-medium">Add-ons</FormLabel>
+                      <div className="flex flex-wrap gap-2">
+                        {(selectedProduct?.addOns || []).length > 0 ? (
+                          selectedProduct.addOns.map((addon: string) => (
+                            <Button
+                              key={addon}
+                              type="button"
+                              variant={field.value?.includes(addon) ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => {
+                                const current = field.value || [];
+                                const updated = current.includes(addon)
+                                  ? current.filter((a: string) => a !== addon)
+                                  : [...current, addon];
+                                field.onChange(updated);
+                              }}
+                            >
+                              {addon}
+                            </Button>
+                          ))
+                        ) : (
+                          ['Starch', 'Softener', 'Anti-Bacterial', 'Express Delivery', 'Premium Packaging'].map((addon) => (
+                            <Button
+                              key={addon}
+                              type="button"
+                              variant={field.value?.includes(addon) ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => {
+                                const current = field.value || [];
+                                const updated = current.includes(addon)
+                                  ? current.filter((a: string) => a !== addon)
+                                  : [...current, addon];
+                                field.onChange(updated);
+                              }}
+                            >
+                              {addon}
+                            </Button>
+                          ))
+                        )}
+                      </div>
+                      <FormDescription className="text-xs">Click to toggle add-ons</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -285,7 +367,7 @@ export function OrderForm({ onSubmit, defaultValues, isSubmitting }: OrderFormPr
               variant="outline"
               className="w-full h-10 border-dashed"
               onClick={() =>
-                append({ serviceType: '', quantity: 1, price: 0, notes: '' })
+                append({ productId: '', clothType: '', quantity: 1, unitPrice: 0, addOns: [] })
               }
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -294,96 +376,32 @@ export function OrderForm({ onSubmit, defaultValues, isSubmitting }: OrderFormPr
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Payment & Delivery Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="paymentMethod"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Payment Method</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select payment method" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="cash">Cash</SelectItem>
-                        <SelectItem value="card">Card</SelectItem>
-                        <SelectItem value="upi">UPI</SelectItem>
-                        <SelectItem value="wallet">Wallet</SelectItem>
-                        <SelectItem value="online">Online Payment</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+        {/* Special Instructions */}
+        <FormField
+          control={form.control}
+          name="specialInstructions"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center justify-between">
+                <span>Special Instructions</span>
+                <span className="text-xs text-muted-foreground font-normal shrink-0">(Optional)</span>
+              </FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Any special instructions for this order"
+                  className="resize-none min-h-[80px]"
+                  {...field}
+                />
+              </FormControl>
+              <FormDescription className="text-xs">
+                e.g. Deliver before 6pm, Handle with care, etc.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-              <FormField
-                control={form.control}
-                name="assignedTo"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center justify-between">
-                      <span className="truncate mr-2">Assign to Delivery Personnel</span>
-                      <span className="text-xs text-muted-foreground font-normal shrink-0">(Optional)</span>
-                    </FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select delivery personnel" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="unassigned">Unassigned</SelectItem>
-                        {mockDeliveryBoys.map((db) => (
-                          <SelectItem key={db.id} value={db.id}>
-                            {db.name} - {db.vehicleType}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormDescription className="text-xs">
-                      Leave unassigned to assign later
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="specialInstructions"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center justify-between">
-                    <span>Special Instructions</span>
-                    <span className="text-xs text-muted-foreground font-normal shrink-0">(Optional)</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Any special instructions for this order"
-                      className="resize-none min-h-[80px]"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription className="text-xs">
-                    Add any specific requirements or notes for this order
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
-
+        {/* Total */}
         <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border">
           <span className="text-base font-semibold">Total Amount:</span>
           <span className="text-2xl font-bold">₹{calculateTotal().toFixed(2)}</span>

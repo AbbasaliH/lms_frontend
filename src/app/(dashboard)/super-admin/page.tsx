@@ -2,13 +2,34 @@
 
 import { StatsCard } from '@/components/dashboard/stats-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { mockSuperAdminDashboardStats, mockShops } from '@/lib/mock-data';
-import { DollarSign, Package, Store, Users } from 'lucide-react';
+import { useSuperAdminOverview, useSuperAdminActivities } from '@/lib/hooks/use-admin';
+import { DollarSign, Package, Users, Store, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { format } from 'date-fns';
 
 export default function SuperAdminDashboard() {
-  const stats = mockSuperAdminDashboardStats;
+  const { data: overviewData, isLoading: overviewLoading, isError: overviewError } = useSuperAdminOverview();
+  const { data: activitiesData, isLoading: activitiesLoading } = useSuperAdminActivities();
+
+  const stats = (overviewData as any)?.data || {};
+  const activities = (activitiesData as any)?.data || [];
+
+  if (overviewLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (overviewError) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <p className="text-muted-foreground">Failed to load dashboard data.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -23,60 +44,72 @@ export default function SuperAdminDashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="Total Revenue"
-          value={`$${stats.revenue.toLocaleString()}`}
+          value={`$${(stats.revenue ?? 0).toLocaleString()}`}
           icon={DollarSign}
           trend={{ value: 15.3, isPositive: true }}
         />
         <StatsCard
           title="Total Orders"
-          value={stats.totalOrders}
+          value={stats.totalOrders ?? 0}
           icon={Package}
           trend={{ value: 10.5, isPositive: true }}
         />
         <StatsCard
           title="Total Customers"
-          value={stats.totalCustomers}
+          value={stats.totalCustomers ?? 0}
           icon={Users}
           trend={{ value: 7.8, isPositive: true }}
         />
         <StatsCard
           title="Active Shops"
-          value={mockShops.length}
+          value={stats.activeShops ?? 0}
           icon={Store}
           description="Across all locations"
         />
       </div>
 
-      {/* Shops Overview */}
+      {/* Recent Activities */}
       <Card>
         <CardHeader>
-          <CardTitle>Shop Performance</CardTitle>
+          <CardTitle>Recent Activities</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Shop Name</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Revenue</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {mockShops.map((shop) => (
-                <TableRow key={shop.id}>
-                  <TableCell className="font-medium">{shop.name}</TableCell>
-                  <TableCell>{shop.address}</TableCell>
-                  <TableCell>
-                    <Badge variant={shop.status === 'active' ? 'default' : 'secondary'}>
-                      {shop.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>${shop.revenue.toLocaleString()}</TableCell>
+          {activitiesLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : activities.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No recent activities.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Action</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Time</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {activities.slice(0, 10).map((activity: any) => (
+                  <TableRow key={activity.id || activity._id}>
+                    <TableCell className="font-medium">{activity.action || activity.type || 'N/A'}</TableCell>
+                    <TableCell>{activity.description || activity.message || 'N/A'}</TableCell>
+                    <TableCell>
+                      <Badge variant={activity.status === 'success' ? 'default' : 'secondary'}>
+                        {activity.status || 'N/A'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {activity.createdAt
+                        ? format(new Date(activity.createdAt), 'MMM dd, yyyy HH:mm')
+                        : 'N/A'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

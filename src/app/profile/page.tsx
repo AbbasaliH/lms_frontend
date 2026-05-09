@@ -6,10 +6,12 @@ import { LoyaltyDashboard } from '@/components/customers/loyalty-dashboard';
 import { SupportTicketsList } from '@/components/customers/support-tickets-list';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useAuthStore } from '@/lib/store/auth-store';
 import { Loader2, User, Star, MessageSquare } from 'lucide-react';
 
 export default function ProfilePage() {
-  const { data, isLoading, isError } = useCustomerProfile();
+  const user = useAuthStore((state) => state.user);
+  const { data, isLoading, isError } = useCustomerProfile(user?.id);
 
   if (isLoading) {
     return (
@@ -20,7 +22,7 @@ export default function ProfilePage() {
   }
 
   // Handle case where user is not a customer or profile not found
-  if (isError || !data?.data?.customer) {
+  if (isError || !(data as any)?.data?.customer) {
     return (
       <div className="container max-w-4xl py-10">
         <Card>
@@ -33,7 +35,7 @@ export default function ProfilePage() {
     );
   }
 
-  const customer = data.data.customer;
+  const customer = (data as any).data.customer;
 
   return (
     <div className="container max-w-5xl py-10 space-y-8">

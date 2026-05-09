@@ -27,7 +27,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { addCustomerSchema, type AddCustomerFormData } from '@/lib/schemas/customer-schema';
+import { CustomerTier } from '@/lib/types/customer';
 import { useCreateCustomer } from '@/lib/hooks/use-customers';
+import { authApi } from '@/lib/api/auth';
+import { toast } from 'sonner';
 
 const TIERS = ['REGULAR', 'SILVER', 'GOLD', 'PLATINUM'];
 const GENDERS = ['MALE', 'FEMALE', 'OTHER'];
@@ -35,6 +38,7 @@ const ACQUISITION_SOURCES = ['WEBSITE', 'MOBILE_APP', 'WALK_IN', 'REFERRAL', 'SO
 
 export function AddCustomerDialog() {
   const [open, setOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const mutation = useCreateCustomer();
 
   const form = useForm<AddCustomerFormData>({
@@ -47,7 +51,7 @@ export function AddCustomerDialog() {
       gender: 'MALE',
       villageName: '',
       streetName: '',
-      tier: 'REGULAR',
+      tier: CustomerTier.REGULAR,
       specialInstructions: '',
       acquisitionSource: undefined,
       creditLimit: 0,
@@ -69,25 +73,66 @@ export function AddCustomerDialog() {
     reset,
   } = form;
 
-  const onSubmit = (data: AddCustomerFormData) => {
-    // Clean up empty strings and convert to proper format
-    const cleanedData = {
-      ...data,
-      villageName: data.villageName || undefined,
-      streetName: data.streetName || undefined,
-      specialInstructions: data.specialInstructions || undefined,
-      companyName: data.companyName || undefined,
-      gstin: data.gstin || undefined,
-      businessType: data.businessType || undefined,
-      notes: data.notes || undefined,
-    };
+  const onSubmit = async (data: AddCustomerFormData) => {
+    setIsSubmitting(true);
+    try {
+      // Step 1: Create user account silently (no auto-login side effects)
+      const signupResult = await authApi.signupSilently({
+        fullName: data.fullName,
+        email: data.email,
+        password: data.password,
+        phoneNumber: data.phoneNumber,
+        gender: data.gender,
+        villageName: data.villageName || undefined,
+        streetName: data.streetName || undefined,
+      });
 
-    mutation.mutate(cleanedData, {
-      onSuccess: () => {
-        setOpen(false);
-        reset();
-      },
-    });
+      if (!signupResult.success) {
+        toast.error(signupResult.message || 'Failed to create user account');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Support both backend response shapes: { data: { id } } or { data: { user: { id } } }
+      const userId = signupResult.data.id || signupResult.data.user?.id;
+
+      if (!userId) {
+        toast.error('User created but no user ID returned from server');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Step 2: Create customer profile linked to the new user
+      const customerData = {
+        userId,
+        tier: data.tier,
+        specialInstructions: data.specialInstructions || undefined,
+        acquisitionSource: data.acquisitionSource || undefined,
+        creditLimit: data.creditLimit,
+        creditAllowed: data.creditAllowed,
+        isBusinessCustomer: data.isBusinessCustomer,
+        companyName: data.companyName || undefined,
+        gstin: data.gstin || undefined,
+        businessType: data.businessType || undefined,
+        notes: data.notes || undefined,
+      };
+
+      mutation.mutate(customerData, {
+        onSuccess: () => {
+          toast.success('Customer created successfully');
+          setOpen(false);
+          reset();
+          setIsSubmitting(false);
+        },
+        onError: (error: any) => {
+          toast.error(error.message || 'Failed to create customer profile');
+          setIsSubmitting(false);
+        },
+      });
+    } catch (error: any) {
+      toast.error(error.message || 'An unexpected error occurred');
+      setIsSubmitting(false);
+    }
   };
 
   const gender = watch('gender');
@@ -414,12 +459,12 @@ export function AddCustomerDialog() {
                 setOpen(false);
                 reset();
               }}
-              disabled={mutation.isPending}
+              disabled={isSubmitting || mutation.isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? (
+            <Button type="submit" disabled={isSubmitting || mutation.isPending}>
+              {isSubmitting || mutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Creating...

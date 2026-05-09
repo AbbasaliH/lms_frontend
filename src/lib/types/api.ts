@@ -15,6 +15,27 @@ export interface LoginResponse {
   };
 }
 
+export interface RegisterRequest {
+  fullName: string;
+  email: string;
+  password: string;
+  phoneNumber: string;
+  gender: string;
+  villageName?: string;
+  streetName?: string;
+}
+
+export interface RegisterResponse {
+  success: boolean;
+  message: string;
+  data: {
+    id?: string;
+    user?: ApiUser;
+    token: string;
+    refreshToken?: string;
+  };
+}
+
 export interface ApiUser {
   id: string;
   email: string;

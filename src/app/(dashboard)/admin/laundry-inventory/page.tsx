@@ -20,6 +20,12 @@ import {
   Boxes,
   PackageX,
   ArrowRightLeft,
+  Loader2,
+  Trash,
+  Eye,
+  Edit,
+  ArrowDown,
+  Minus,
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -50,6 +56,25 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Label } from '@/components/ui/label';
 
 import {
   useInventoryItems,
@@ -59,8 +84,14 @@ import {
   useNearExpiryItems,
   useReorderSuggestions,
   useInventoryAlerts,
+  useDeleteInventoryItem,
+  useUpdateInventoryItem,
+  useInventoryItem,
+  useReceiveStock,
+  useRecordUsage,
+  useRecordWastage,
 } from '@/lib/hooks/use-laundry-inventory';
-import { 
+import {
   LaundryInventoryCategory,
   StockStatus,
   type InventoryFilters,
@@ -75,6 +106,9 @@ import {
 } from '@/lib/constants/laundry-inventory';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
+import { AddInventoryDialog } from '@/components/inventory/add-inventory-dialog';
+import { CreatePurchaseOrderDialog } from '@/components/purchase-orders/create-purchase-order-dialog';
+import { toast } from 'sonner';
 
 export default function LaundryInventoryPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -87,6 +121,19 @@ export default function LaundryInventoryPage() {
     sortOrder: 'asc',
   });
 
+  // Dialog states
+  const [viewItemId, setViewItemId] = useState<string | null>(null);
+  const [editItem, setEditItem] = useState<any>(null);
+  const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
+  const [receiveItemId, setReceiveItemId] = useState<string | null>(null);
+  const [receiveQuantity, setReceiveQuantity] = useState('');
+  const [usageItemId, setUsageItemId] = useState<string | null>(null);
+  const [usageQuantity, setUsageQuantity] = useState('');
+  const [usageNotes, setUsageNotes] = useState('');
+  const [wastageItemId, setWastageItemId] = useState<string | null>(null);
+  const [wastageQuantity, setWastageQuantity] = useState('');
+  const [wastageReason, setWastageReason] = useState('');
+
   // Fetch data
   const { data: inventoryData, isLoading } = useInventoryItems(filters);
   const { data: analyticsData } = useInventoryAnalytics();
@@ -95,6 +142,16 @@ export default function LaundryInventoryPage() {
   const { data: nearExpiryData } = useNearExpiryItems(30);
   const { data: reorderData } = useReorderSuggestions();
   const { data: alertsData } = useInventoryAlerts({ isResolved: false });
+
+  const deleteMutation = useDeleteInventoryItem();
+  const updateMutation = useUpdateInventoryItem();
+  const receiveMutation = useReceiveStock();
+  const usageMutation = useRecordUsage();
+  const wastageMutation = useRecordWastage();
+
+  const { data: viewItemData, isLoading: viewItemLoading } = useInventoryItem(
+    viewItemId || ''
+  );
 
   const analytics = analyticsData?.data;
   const items = inventoryData?.data?.items || [];
@@ -140,6 +197,81 @@ export default function LaundryInventoryPage() {
     });
   };
 
+  const handleDelete = () => {
+    if (!deleteItemId) return;
+    deleteMutation.mutate(deleteItemId, {
+      onSuccess: () => setDeleteItemId(null),
+    });
+  };
+
+  const handleReceiveStock = () => {
+    if (!receiveItemId || !receiveQuantity) return;
+    receiveMutation.mutate(
+      { id: receiveItemId, quantity: Number(receiveQuantity) },
+      {
+        onSuccess: () => {
+          setReceiveItemId(null);
+          setReceiveQuantity('');
+        },
+      }
+    );
+  };
+
+  const handleRecordUsage = () => {
+    if (!usageItemId || !usageQuantity) return;
+    usageMutation.mutate(
+      {
+        inventoryItemId: usageItemId,
+        quantity: Number(usageQuantity),
+        notes: usageNotes,
+      },
+      {
+        onSuccess: () => {
+          setUsageItemId(null);
+          setUsageQuantity('');
+          setUsageNotes('');
+        },
+      }
+    );
+  };
+
+  const handleRecordWastage = () => {
+    if (!wastageItemId || !wastageQuantity || !wastageReason) return;
+    wastageMutation.mutate(
+      {
+        inventoryItemId: wastageItemId,
+        quantity: Number(wastageQuantity),
+        reason: wastageReason,
+      },
+      {
+        onSuccess: () => {
+          setWastageItemId(null);
+          setWastageQuantity('');
+          setWastageReason('');
+        },
+      }
+    );
+  };
+
+  const handleEditSave = () => {
+    if (!editItem) return;
+    updateMutation.mutate(
+      {
+        id: editItem.id,
+        data: {
+          itemName: editItem.itemName,
+          quantity: Number(editItem.quantity),
+          minimumStock: Number(editItem.minimumStock),
+          costPerUnit: Number(editItem.costPerUnit),
+          location: editItem.location,
+        },
+      },
+      {
+        onSuccess: () => setEditItem(null),
+      }
+    );
+  };
+
   return (
     <div className="flex flex-col gap-6 p-6">
       {/* Header */}
@@ -151,18 +283,15 @@ export default function LaundryInventoryPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" disabled>
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" disabled>
             <Upload className="mr-2 h-4 w-4" />
             Import
           </Button>
-          <Button size="sm">
-            <Plus className="mr-2 h-4 w-4" />
-            Add Item
-          </Button>
+          <AddInventoryDialog />
         </div>
       </div>
 
@@ -254,27 +383,44 @@ export default function LaundryInventoryPage() {
             <CardTitle className="text-lg">Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2">
-            <Button variant="outline" className="justify-start">
-              <Boxes className="mr-2 h-4 w-4" />
-              Record Usage
-            </Button>
-            <Button variant="outline" className="justify-start">
+            <AddInventoryDialog />
+            <Button
+              variant="outline"
+              className="justify-start"
+              disabled
+            >
               <PackageX className="mr-2 h-4 w-4" />
               Record Wastage
             </Button>
-            <Button variant="outline" className="justify-start">
+            <Button
+              variant="outline"
+              className="justify-start"
+              disabled
+            >
               <ArrowRightLeft className="mr-2 h-4 w-4" />
               Stock Transfer
             </Button>
-            <Button variant="outline" className="justify-start">
+            <Button
+              variant="outline"
+              className="justify-start"
+              disabled
+            >
               <History className="mr-2 h-4 w-4" />
               View Transactions
             </Button>
-            <Button variant="outline" className="justify-start">
+            <Button
+              variant="outline"
+              className="justify-start"
+              disabled
+            >
               <BarChart3 className="mr-2 h-4 w-4" />
               Analytics Report
             </Button>
-            <Button variant="outline" className="justify-start">
+            <Button
+              variant="outline"
+              className="justify-start"
+              disabled
+            >
               <Calendar className="mr-2 h-4 w-4" />
               Usage Trends
             </Button>
@@ -484,12 +630,28 @@ export default function LaundryInventoryPage() {
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem>View Details</DropdownMenuItem>
-                              <DropdownMenuItem>Edit Item</DropdownMenuItem>
-                              <DropdownMenuItem>Record Usage</DropdownMenuItem>
-                              <DropdownMenuItem>Receive Stock</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setViewItemId(item.id)}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setEditItem({ ...item })}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit Item
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setUsageItemId(item.id)}>
+                                <Minus className="mr-2 h-4 w-4" />
+                                Record Usage
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setReceiveItemId(item.id)}>
+                                <ArrowDown className="mr-2 h-4 w-4" />
+                                Receive Stock
+                              </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-destructive">
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => setDeleteItemId(item.id)}
+                              >
+                                <Trash className="mr-2 h-4 w-4" />
                                 Delete Item
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -533,9 +695,11 @@ export default function LaundryInventoryPage() {
                         Min: {item.minimumStock}
                       </div>
                     </div>
-                    <Button size="sm" className="ml-4">
-                      Reorder
-                    </Button>
+                    <CreatePurchaseOrderDialog>
+                      <Button size="sm" className="ml-4">
+                        Reorder
+                      </Button>
+                    </CreatePurchaseOrderDialog>
                   </div>
                 ))}
               </div>
@@ -572,9 +736,11 @@ export default function LaundryInventoryPage() {
                         Lead time: {item.leadTimeDays || 7} days
                       </div>
                     </div>
-                    <Button size="sm" className="ml-4">
-                      Create PO
-                    </Button>
+                    <CreatePurchaseOrderDialog>
+                      <Button size="sm" className="ml-4">
+                        Create PO
+                      </Button>
+                    </CreatePurchaseOrderDialog>
                   </div>
                 ))}
               </div>
@@ -614,7 +780,12 @@ export default function LaundryInventoryPage() {
                             Qty: {formatQuantity(item.quantity, item.unit)}
                           </div>
                         </div>
-                        <Button size="sm" variant="destructive" className="ml-4">
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="ml-4"
+                          onClick={() => setWastageItemId(item.id)}
+                        >
                           Record Wastage
                         </Button>
                       </div>
@@ -656,7 +827,12 @@ export default function LaundryInventoryPage() {
                             Qty: {formatQuantity(item.quantity, item.unit)}
                           </div>
                         </div>
-                        <Button size="sm" variant="outline" className="ml-4">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="ml-4"
+                          onClick={() => setUsageItemId(item.id)}
+                        >
                           Use First
                         </Button>
                       </div>
@@ -668,6 +844,305 @@ export default function LaundryInventoryPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* View Details Dialog */}
+      <Dialog open={!!viewItemId} onOpenChange={(open) => !open && setViewItemId(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Item Details</DialogTitle>
+          </DialogHeader>
+          {viewItemLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-4 w-1/2" />
+            </div>
+          ) : viewItemData?.data ? (
+            <div className="space-y-3 text-sm">
+              <div className="grid grid-cols-2 gap-2">
+                <span className="text-muted-foreground">SKU:</span>
+                <span className="font-mono">{viewItemData.data.sku}</span>
+                <span className="text-muted-foreground">Name:</span>
+                <span className="font-medium">{viewItemData.data.itemName}</span>
+                <span className="text-muted-foreground">Category:</span>
+                <span>{CATEGORY_LABELS[viewItemData.data.category]}</span>
+                <span className="text-muted-foreground">Quantity:</span>
+                <span>
+                  {formatQuantity(viewItemData.data.quantity, viewItemData.data.unit)}
+                </span>
+                <span className="text-muted-foreground">Location:</span>
+                <span>{viewItemData.data.location}</span>
+                <span className="text-muted-foreground">Cost/Unit:</span>
+                <span>
+                  {formatCurrency(
+                    viewItemData.data.costPerUnit,
+                    viewItemData.data.currency
+                  )}
+                </span>
+                <span className="text-muted-foreground">Supplier:</span>
+                <span>{viewItemData.data.supplierName}</span>
+                <span className="text-muted-foreground">Status:</span>
+                <Badge variant={STATUS_INFO[viewItemData.data.status].variant}>
+                  {STATUS_INFO[viewItemData.data.status].label}
+                </Badge>
+              </div>
+              {viewItemData.data.notes && (
+                <div>
+                  <span className="text-muted-foreground">Notes:</span>
+                  <p className="mt-1 rounded-md bg-muted p-2">
+                    {viewItemData.data.notes}
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Item Dialog */}
+      <Dialog open={!!editItem} onOpenChange={(open) => !open && setEditItem(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Item</DialogTitle>
+            <DialogDescription>Update inventory item details</DialogDescription>
+          </DialogHeader>
+          {editItem && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Item Name</Label>
+                <Input
+                  value={editItem.itemName}
+                  onChange={(e) =>
+                    setEditItem({ ...editItem, itemName: e.target.value })
+                  }
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Quantity</Label>
+                  <Input
+                    type="number"
+                    value={editItem.quantity}
+                    onChange={(e) =>
+                      setEditItem({ ...editItem, quantity: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Min Stock</Label>
+                  <Input
+                    type="number"
+                    value={editItem.minimumStock}
+                    onChange={(e) =>
+                      setEditItem({ ...editItem, minimumStock: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Cost Per Unit</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={editItem.costPerUnit}
+                  onChange={(e) =>
+                    setEditItem({ ...editItem, costPerUnit: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Location</Label>
+                <Input
+                  value={editItem.location}
+                  onChange={(e) =>
+                    setEditItem({ ...editItem, location: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditItem(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditSave} disabled={updateMutation.isPending}>
+              {updateMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog
+        open={!!deleteItemId}
+        onOpenChange={(open) => !open && setDeleteItemId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the inventory
+              item.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Receive Stock Dialog */}
+      <Dialog
+        open={!!receiveItemId}
+        onOpenChange={(open) => !open && setReceiveItemId(null)}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Receive Stock</DialogTitle>
+            <DialogDescription>Enter quantity to receive</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="receive-qty">Quantity</Label>
+              <Input
+                id="receive-qty"
+                type="number"
+                min="1"
+                value={receiveQuantity}
+                onChange={(e) => setReceiveQuantity(e.target.value)}
+                placeholder="0"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReceiveItemId(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleReceiveStock}
+              disabled={receiveMutation.isPending || !receiveQuantity}
+            >
+              {receiveMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Receive
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Record Usage Dialog */}
+      <Dialog
+        open={!!usageItemId}
+        onOpenChange={(open) => !open && setUsageItemId(null)}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Record Usage</DialogTitle>
+            <DialogDescription>Enter usage quantity</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="usage-qty">Quantity Used</Label>
+              <Input
+                id="usage-qty"
+                type="number"
+                min="1"
+                value={usageQuantity}
+                onChange={(e) => setUsageQuantity(e.target.value)}
+                placeholder="0"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="usage-notes">Notes</Label>
+              <Input
+                id="usage-notes"
+                value={usageNotes}
+                onChange={(e) => setUsageNotes(e.target.value)}
+                placeholder="Optional notes"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUsageItemId(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRecordUsage}
+              disabled={usageMutation.isPending || !usageQuantity}
+            >
+              {usageMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Record Usage
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Record Wastage Dialog */}
+      <Dialog
+        open={!!wastageItemId}
+        onOpenChange={(open) => !open && setWastageItemId(null)}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Record Wastage</DialogTitle>
+            <DialogDescription>Enter wastage details</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="wastage-qty">Quantity Wasted</Label>
+              <Input
+                id="wastage-qty"
+                type="number"
+                min="1"
+                value={wastageQuantity}
+                onChange={(e) => setWastageQuantity(e.target.value)}
+                placeholder="0"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="wastage-reason">Reason</Label>
+              <Input
+                id="wastage-reason"
+                value={wastageReason}
+                onChange={(e) => setWastageReason(e.target.value)}
+                placeholder="e.g., Expired, Damaged"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWastageItemId(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRecordWastage}
+              disabled={
+                wastageMutation.isPending || !wastageQuantity || !wastageReason
+              }
+            >
+              {wastageMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Record Wastage
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

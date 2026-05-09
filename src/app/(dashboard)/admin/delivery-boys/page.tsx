@@ -43,13 +43,14 @@ import {
 import { DeliveryBoyForm } from '@/components/forms/delivery-boy-form';
 import { DeliveryBoyFilters } from '@/components/delivery-boys/delivery-boy-filters';
 import { DeliveryBoyDetailDialog } from '@/components/delivery-boys/delivery-boy-detail-dialog';
-import { useDeliveryBoys, useCreateDeliveryBoy, useDeleteDeliveryBoy, useUpdateDeliveryBoyStatus } from '@/lib/hooks/use-delivery-boys';
+import { useDeliveryBoys, useCreateDeliveryBoy, useDeleteDeliveryBoy, useUpdateDeliveryBoyStatus, useUpdateDeliveryBoy } from '@/lib/hooks/use-delivery-boys';
 import { VehicleType, DeliveryBoyStatus } from '@/lib/types/delivery-boy';
 import type { DeliveryBoyFormData } from '@/lib/schemas/delivery-boy-schema';
 import type { ApiDeliveryBoyItem } from '@/lib/types/delivery-boy';
 
 export default function DeliveryBoysPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedDeliveryBoy, setSelectedDeliveryBoy] = useState<ApiDeliveryBoyItem | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   
@@ -76,6 +77,7 @@ export default function DeliveryBoysPage() {
   const createMutation = useCreateDeliveryBoy();
   const deleteMutation = useDeleteDeliveryBoy();
   const updateStatusMutation = useUpdateDeliveryBoyStatus();
+  const updateMutation = useUpdateDeliveryBoy();
 
   const handleSubmit = async (formData: DeliveryBoyFormData) => {
     try {
@@ -99,6 +101,39 @@ export default function DeliveryBoysPage() {
     } catch (error) {
       // Error handled by mutation
     }
+  };
+
+  const handleEditSubmit = async (formData: DeliveryBoyFormData) => {
+    if (!selectedDeliveryBoy) return;
+    try {
+      await updateMutation.mutateAsync({
+        id: selectedDeliveryBoy.id,
+        data: {
+          fullName: formData.fullName,
+          email: formData.email,
+          phoneNumber: formData.phoneNumber,
+          gender: formData.gender,
+          villageName: formData.villageName,
+          streetName: formData.streetName,
+          vehicleType: formData.vehicleType,
+          vehicleNumber: formData.vehicleNumber,
+          licenseNumber: formData.licenseNumber,
+          aadharNumber: formData.aadharNumber,
+          emergencyContact: formData.emergencyContact,
+          workingHoursStart: formData.workingHoursStart,
+          workingHoursEnd: formData.workingHoursEnd,
+        },
+      });
+      setIsEditDialogOpen(false);
+      setSelectedDeliveryBoy(null);
+    } catch (error) {
+      // Error handled by mutation
+    }
+  };
+
+  const handleEditClick = (deliveryBoy: ApiDeliveryBoyItem) => {
+    setSelectedDeliveryBoy(deliveryBoy);
+    setIsEditDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -356,7 +391,7 @@ export default function DeliveryBoysPage() {
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Details
                               </DropdownMenuItem>
-                              <DropdownMenuItem disabled>
+                              <DropdownMenuItem onClick={() => handleEditClick(deliveryBoy)}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit
                               </DropdownMenuItem>
@@ -408,6 +443,37 @@ export default function DeliveryBoysPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Delivery Personnel</DialogTitle>
+            <DialogDescription>
+              Update delivery person details and vehicle information.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedDeliveryBoy && (
+            <DeliveryBoyForm
+              onSubmit={handleEditSubmit}
+              isSubmitting={updateMutation.isPending}
+              isEdit
+              defaultValues={{
+                fullName: selectedDeliveryBoy.fullName,
+                email: selectedDeliveryBoy.email,
+                phoneNumber: selectedDeliveryBoy.phoneNumber,
+                gender: selectedDeliveryBoy.gender as any,
+                vehicleType: selectedDeliveryBoy.deliveryBoy.vehicleType,
+                vehicleNumber: selectedDeliveryBoy.deliveryBoy.vehicleNumber,
+                licenseNumber: selectedDeliveryBoy.deliveryBoy.licenseNumber,
+                emergencyContact: undefined,
+                workingHoursStart: undefined,
+                workingHoursEnd: undefined,
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       <DeliveryBoyDetailDialog
         deliveryBoy={selectedDeliveryBoy}

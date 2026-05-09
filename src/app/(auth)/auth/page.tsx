@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/lib/hooks/use-auth';
+import { toast } from 'sonner';
 import { Eye, EyeOff, Sparkles } from 'lucide-react';
 
 export default function AuthPage() {
@@ -16,12 +17,14 @@ export default function AuthPage() {
     email: '',
     password: '',
     name: '',
+    phoneNumber: '',
+    gender: 'MALE',
     confirmPassword: '',
     rememberMe: false,
     agreeToTerms: false,
   });
   
-  const { login, isLoading } = useAuth();
+  const { login, signup, isLoading } = useAuth();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,14 +36,28 @@ export default function AuthPage() {
         password: formData.password,
       });
     } else {
-      // Signup logic - implement when API endpoint is available
-      // For now, just show message
+      // Signup validation
       if (formData.password !== formData.confirmPassword) {
+        toast.error('Passwords do not match');
         return;
       }
       if (!formData.agreeToTerms) {
+        toast.error('You must agree to the terms of service');
         return;
       }
+      if (formData.password.length < 6) {
+        toast.error('Password must be at least 6 characters');
+        return;
+      }
+
+      // Signup with real API
+      signup({
+        fullName: formData.name,
+        email: formData.email,
+        password: formData.password,
+        phoneNumber: formData.phoneNumber,
+        gender: formData.gender,
+      });
     }
   };
 
@@ -65,16 +82,43 @@ export default function AuthPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  placeholder="John Doe"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required={!isLogin}
-                />
-              </div>
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    placeholder="John Doe"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    required={!isLogin}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phoneNumber">Phone Number</Label>
+                  <Input
+                    id="phoneNumber"
+                    type="tel"
+                    placeholder="+1234567890"
+                    value={formData.phoneNumber}
+                    onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                    required={!isLogin}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="gender">Gender</Label>
+                  <select
+                    id="gender"
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    value={formData.gender}
+                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                    required={!isLogin}
+                  >
+                    <option value="MALE">Male</option>
+                    <option value="FEMALE">Female</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </div>
+              </>
             )}
             
             <div className="space-y-2">
@@ -142,7 +186,7 @@ export default function AuthPage() {
                     Remember me
                   </label>
                 </div>
-                <Button variant="link" className="px-0 text-sm">
+                <Button variant="link" className="px-0 text-sm" onClick={() => toast.info('Please contact your administrator to reset your password')}>
                   Forgot password?
                 </Button>
               </div>
@@ -183,11 +227,9 @@ export default function AuthPage() {
           </div>
           {isLogin && (
             <div className="pt-4 border-t w-full">
-              <p className="text-xs text-center text-muted-foreground mb-2">Production Credentials:</p>
-              <div className="space-y-1 text-xs text-muted-foreground">
-                <p><strong>Email:</strong> admin@example.com</p>
-                <p><strong>Password:</strong> Admin@123</p>
-              </div>
+              <p className="text-xs text-center text-muted-foreground">
+                Contact your administrator for login credentials.
+              </p>
             </div>
           )}
         </CardFooter>

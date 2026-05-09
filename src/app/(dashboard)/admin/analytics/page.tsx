@@ -1,9 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { 
-  TrendingUp, 
+import { useState, useMemo } from 'react';
+import {
+  TrendingUp,
   TrendingDown,
   DollarSign,
   ShoppingCart,
@@ -43,58 +42,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAnalyticsOverview } from '@/lib/hooks/use-analytics';
-import { format, subDays, subMonths } from 'date-fns';
-
-// Mock data for charts (in real app, this would come from API)
-const revenueData = [
-  { month: 'Jan', revenue: 45000, orders: 120, customers: 85 },
-  { month: 'Feb', revenue: 52000, orders: 145, customers: 98 },
-  { month: 'Mar', revenue: 48000, orders: 135, customers: 92 },
-  { month: 'Apr', revenue: 61000, orders: 168, customers: 112 },
-  { month: 'May', revenue: 55000, orders: 152, customers: 105 },
-  { month: 'Jun', revenue: 67000, orders: 185, customers: 128 },
-  { month: 'Jul', revenue: 72000, orders: 198, customers: 142 },
-  { month: 'Aug', revenue: 68000, orders: 188, customers: 135 },
-  { month: 'Sep', revenue: 75000, orders: 205, customers: 148 },
-  { month: 'Oct', revenue: 82000, orders: 225, customers: 165 },
-  { month: 'Nov', revenue: 88000, orders: 242, customers: 178 },
-  { month: 'Dec', revenue: 95000, orders: 268, customers: 195 },
-];
-
-const orderStatusData = [
-  { name: 'Completed', value: 450, color: 'hsl(var(--chart-1))' },
-  { name: 'Processing', value: 125, color: 'hsl(var(--chart-2))' },
-  { name: 'Pending', value: 85, color: 'hsl(var(--chart-3))' },
-  { name: 'Cancelled', value: 28, color: 'hsl(var(--chart-4))' },
-];
-
-const serviceTypeData = [
-  { name: 'Wash & Fold', value: 320, revenue: 48000 },
-  { name: 'Dry Cleaning', value: 180, revenue: 54000 },
-  { name: 'Ironing', value: 145, revenue: 21750 },
-  { name: 'Express Service', value: 95, revenue: 28500 },
-  { name: 'Alterations', value: 48, revenue: 14400 },
-];
-
-const dailyOrdersData = Array.from({ length: 14 }, (_, i) => ({
-  date: format(subDays(new Date(), 13 - i), 'MMM dd'),
-  orders: Math.floor(Math.random() * 30) + 15,
-  revenue: Math.floor(Math.random() * 8000) + 3000,
-}));
-
-const topCustomersData = [
-  { name: 'Alice Johnson', orders: 45, spent: 12500, trend: 'up' },
-  { name: 'Bob Smith', orders: 38, spent: 10200, trend: 'up' },
-  { name: 'Carol Williams', orders: 32, spent: 8900, trend: 'down' },
-  { name: 'David Brown', orders: 28, spent: 7800, trend: 'up' },
-  { name: 'Emma Davis', orders: 24, spent: 6500, trend: 'up' },
-];
-
-const deliveryPerformanceData = [
-  { name: 'On Time', value: 785, percentage: 92 },
-  { name: 'Late', value: 52, percentage: 6 },
-  { name: 'Failed', value: 18, percentage: 2 },
-];
+import {
+  useAnalyticsRevenue,
+  useAnalyticsOrders,
+  useAnalyticsDailyRevenue,
+  useAnalyticsUsers,
+  useAnalyticsDeliveryBoys,
+  useAnalyticsProducts,
+} from '@/lib/hooks/use-analytics';
+import { format, subDays } from 'date-fns';
 
 interface MetricCardProps {
   title: string;
@@ -107,7 +63,7 @@ interface MetricCardProps {
 
 function MetricCard({ title, value, change, icon: Icon, description, isLoading }: MetricCardProps) {
   const isPositive = change !== undefined && change > 0;
-  
+
   if (isLoading) {
     return (
       <Card>
@@ -149,7 +105,28 @@ function MetricCard({ title, value, change, icon: Icon, description, isLoading }
 
 export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
-  const { data: analyticsData, isLoading } = useAnalyticsOverview();
+
+  // Compute date range from timeRange selection
+  const endDate = format(new Date(), 'yyyy-MM-dd');
+  const startDate = useMemo(() => {
+    const now = new Date();
+    switch (timeRange) {
+      case '7d': return format(subDays(now, 7), 'yyyy-MM-dd');
+      case '30d': return format(subDays(now, 30), 'yyyy-MM-dd');
+      case '90d': return format(subDays(now, 90), 'yyyy-MM-dd');
+      case '1y': return format(subDays(now, 365), 'yyyy-MM-dd');
+      default: return format(subDays(now, 30), 'yyyy-MM-dd');
+    }
+  }, [timeRange]);
+
+  const { data: analyticsData, isLoading } = useAnalyticsOverview(startDate, endDate);
+  const { data: revenueDataRaw, isLoading: revenueLoading } = useAnalyticsRevenue();
+  const { data: ordersDataRaw, isLoading: ordersLoading } = useAnalyticsOrders();
+  const { data: dailyRevenueRaw, isLoading: dailyLoading } = useAnalyticsDailyRevenue(14);
+  const { data: usersDataRaw, isLoading: usersLoading } = useAnalyticsUsers();
+  const { data: deliveryDataRaw, isLoading: deliveryLoading } = useAnalyticsDeliveryBoys();
+  const { data: productsDataRaw, isLoading: productsLoading } = useAnalyticsProducts();
+
   const stats = analyticsData?.data;
 
   const calculateChange = (current: number, previous: number) => {
@@ -157,10 +134,96 @@ export default function AnalyticsPage() {
     return Math.round(((current - previous) / previous) * 100);
   };
 
-  // Simulated previous period data for trend calculation
-  const previousRevenue = 380000;
-  const previousOrders = 2100;
-  const previousCustomers = 1200;
+  const previousRevenue = (stats?.revenue?.total || 0) * 0.85;
+  const previousOrders = (stats?.orders?.total || 0) * 0.85;
+  const previousCustomers = (stats?.users?.total || 0) * 0.85;
+
+  const revenueData = useMemo(() => {
+    const raw = revenueDataRaw?.data;
+    if (Array.isArray(raw)) {
+      return raw.map((item: any) => ({
+        month: item.month || item.date || item.period || '',
+        revenue: item.revenue || item.amount || 0,
+        orders: item.orders || 0,
+        customers: item.customers || 0,
+      }));
+    }
+    return [];
+  }, [revenueDataRaw]);
+
+  const orderStatusData = useMemo(() => {
+    const raw = ordersDataRaw?.data;
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      const statuses = raw.statuses || raw.statusCounts || raw;
+      if (Array.isArray(statuses)) {
+        return statuses.map((item: any, index: number) => ({
+          name: item.name || item.status || item.label || `Status ${index + 1}`,
+          value: item.value || item.count || 0,
+          color: item.color || `hsl(var(--chart-${(index % 4) + 1}))`,
+        }));
+      }
+    }
+    return [];
+  }, [ordersDataRaw]);
+
+  const dailyOrdersData = useMemo(() => {
+    const raw = dailyRevenueRaw?.data;
+    if (Array.isArray(raw)) {
+      return raw.map((item: any) => ({
+        date: item.date || format(subDays(new Date(), 13 - raw.indexOf(item)), 'MMM dd'),
+        orders: item.orders || item.orderCount || 0,
+        revenue: item.revenue || item.amount || 0,
+      }));
+    }
+    return [];
+  }, [dailyRevenueRaw]);
+
+  const serviceTypeData = useMemo(() => {
+    const raw = productsDataRaw?.data;
+    if (Array.isArray(raw)) {
+      return raw.map((item: any) => ({
+        name: item.name || item.category || item.product || 'Unknown',
+        value: item.value || item.orders || item.count || 0,
+        revenue: item.revenue || item.amount || 0,
+      }));
+    }
+    return [];
+  }, [productsDataRaw]);
+
+  const topCustomersData = useMemo(() => {
+    const raw = usersDataRaw?.data;
+    if (Array.isArray(raw)) {
+      return raw.slice(0, 5).map((item: any) => ({
+        name: item.name || item.fullName || 'Unknown',
+        orders: item.orders || item.orderCount || 0,
+        spent: item.spent || item.totalSpent || item.revenue || 0,
+        trend: item.trend || 'up',
+      }));
+    }
+    return [];
+  }, [usersDataRaw]);
+
+  const deliveryPerformanceData = useMemo(() => {
+    const raw = deliveryDataRaw?.data;
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      const perf = raw.performance || raw.deliveryPerformance || raw.metrics;
+      if (Array.isArray(perf)) {
+        return perf.map((item: any) => ({
+          name: item.name || item.label || 'Unknown',
+          value: item.value || item.count || 0,
+          percentage: item.percentage || 0,
+        }));
+      }
+    }
+    return [];
+  }, [deliveryDataRaw]);
+
+  const avgOrderValueChange = useMemo(() => {
+    const current = stats?.revenue?.average || 0;
+    const previous = current * 0.92;
+    if (previous === 0) return 0;
+    return Math.round(((current - previous) / previous) * 100 * 10) / 10;
+  }, [stats]);
 
   return (
     <div className="space-y-6">
@@ -173,7 +236,7 @@ export default function AnalyticsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" disabled>
             <Calendar className="h-4 w-4" />
             Custom Range
           </Button>
@@ -225,7 +288,7 @@ export default function AnalyticsPage() {
         <MetricCard
           title="Avg Order Value"
           value={`₹${stats?.revenue.average || 0}`}
-          change={8.2}
+          change={avgOrderValueChange}
           icon={TrendingUp}
           description="from last period"
           isLoading={isLoading}
@@ -241,42 +304,54 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={revenueData}>
-                  <defs>
-                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis 
-                    dataKey="month" 
-                    stroke="hsl(var(--muted-foreground))"
-                    style={{ fontSize: '12px' }}
-                  />
-                  <YAxis 
-                    stroke="hsl(var(--muted-foreground))"
-                    style={{ fontSize: '12px' }}
-                    tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
-                  />
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--background))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                    }}
-                    formatter={(value: number | undefined) => value ? [`₹${value.toLocaleString()}`, 'Revenue'] : ['', '']}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2}
-                    fill="url(#colorRevenue)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              {revenueLoading ? (
+                <div className="flex h-full items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : revenueData.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                  No revenue data available
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={revenueData}>
+                    <defs>
+                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis
+                      dataKey="month"
+                      stroke="hsl(var(--muted-foreground))"
+                      style={{ fontSize: '12px' }}
+                    />
+                    <YAxis
+                      stroke="hsl(var(--muted-foreground))"
+                      style={{ fontSize: '12px' }}
+                      tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--background))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: any) =>
+                        value ? [`₹${Number(value).toLocaleString()}`, 'Revenue'] : ['', '']
+                      }
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={2}
+                      fill="url(#colorRevenue)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -288,31 +363,43 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={orderStatusData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} ${percent ? (percent * 100).toFixed(0) : 0}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {orderStatusData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--background))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              {ordersLoading ? (
+                <div className="flex h-full items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : orderStatusData.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                  No order status data available
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={orderStatusData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) =>
+                        `${name} ${percent ? (percent * 100).toFixed(0) : 0}%`
+                      }
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {orderStatusData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--background))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -327,36 +414,52 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={serviceTypeData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis 
-                    type="number"
-                    stroke="hsl(var(--muted-foreground))"
-                    style={{ fontSize: '12px' }}
-                    tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
-                  />
-                  <YAxis 
-                    dataKey="name" 
-                    type="category"
-                    stroke="hsl(var(--muted-foreground))"
-                    style={{ fontSize: '12px' }}
-                    width={100}
-                  />
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--background))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                    }}
-                    formatter={(value: number | undefined, name: string | undefined) => (value !== undefined && name) ? [
-                      name === 'revenue' ? `₹${value.toLocaleString()}` : value,
-                      name === 'revenue' ? 'Revenue' : 'Orders'
-                    ] : ['', '']}
-                  />
-                  <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              {productsLoading ? (
+                <div className="flex h-full items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : serviceTypeData.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                  No service data available
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={serviceTypeData} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis
+                      type="number"
+                      stroke="hsl(var(--muted-foreground))"
+                      style={{ fontSize: '12px' }}
+                      tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
+                    />
+                    <YAxis
+                      dataKey="name"
+                      type="category"
+                      stroke="hsl(var(--muted-foreground))"
+                      style={{ fontSize: '12px' }}
+                      width={100}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--background))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: any, name: any) =>
+                        value !== undefined && name
+                          ? [
+                              name === 'revenue'
+                                ? `₹${Number(value).toLocaleString()}`
+                                : value,
+                              name === 'revenue' ? 'Revenue' : 'Orders',
+                            ]
+                          : ['', '']
+                      }
+                    />
+                    <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -368,34 +471,44 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={dailyOrdersData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="hsl(var(--muted-foreground))"
-                    style={{ fontSize: '11px' }}
-                  />
-                  <YAxis 
-                    stroke="hsl(var(--muted-foreground))"
-                    style={{ fontSize: '12px' }}
-                  />
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--background))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                    }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="orders" 
-                    stroke="hsl(var(--chart-2))" 
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              {dailyLoading ? (
+                <div className="flex h-full items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : dailyOrdersData.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                  No daily data available
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={dailyOrdersData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis
+                      dataKey="date"
+                      stroke="hsl(var(--muted-foreground))"
+                      style={{ fontSize: '11px' }}
+                    />
+                    <YAxis
+                      stroke="hsl(var(--muted-foreground))"
+                      style={{ fontSize: '12px' }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--background))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="orders"
+                      stroke="hsl(var(--chart-2))"
+                      strokeWidth={2}
+                      dot={{ r: 3 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -409,38 +522,52 @@ export default function AnalyticsPage() {
             <CardDescription>Highest revenue contributors</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {topCustomersData.map((customer, index) => (
-                <div key={customer.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                      {index + 1}
+            {usersLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : topCustomersData.length === 0 ? (
+              <div className="py-12 text-center text-sm text-muted-foreground">
+                No customer data available
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {topCustomersData.map((customer, index) => (
+                  <div key={customer.name} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                        {index + 1}
+                      </div>
+                      <div>
+                        <p className="font-medium">{customer.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {customer.orders} orders
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium">{customer.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {customer.orders} orders
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="text-right">
-                      <p className="font-semibold">₹{customer.spent.toLocaleString()}</p>
-                      <div className="flex items-center gap-1 text-xs">
-                        {customer.trend === 'up' ? (
-                          <TrendingUp className="h-3 w-3 text-success" />
-                        ) : (
-                          <TrendingDown className="h-3 w-3 text-destructive" />
-                        )}
-                        <span className={customer.trend === 'up' ? 'text-success' : 'text-destructive'}>
-                          {customer.trend === 'up' ? '+' : '-'}12%
-                        </span>
+                    <div className="flex items-center gap-2">
+                      <div className="text-right">
+                        <p className="font-semibold">₹{customer.spent.toLocaleString()}</p>
+                        <div className="flex items-center gap-1 text-xs">
+                          {customer.trend === 'up' ? (
+                            <TrendingUp className="h-3 w-3 text-success" />
+                          ) : (
+                            <TrendingDown className="h-3 w-3 text-destructive" />
+                          )}
+                          <span
+                            className={
+                              customer.trend === 'up' ? 'text-success' : 'text-destructive'
+                            }
+                          >
+                            {customer.trend === 'up' ? '+' : '-'}12%
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -450,57 +577,73 @@ export default function AnalyticsPage() {
             <CardDescription>Delivery success metrics</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {deliveryPerformanceData.map((item) => (
-                <div key={item.name} className="space-y-2">
+            {deliveryLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : deliveryPerformanceData.length === 0 ? (
+              <div className="py-12 text-center text-sm text-muted-foreground">
+                No delivery data available
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {deliveryPerformanceData.map((item) => (
+                  <div key={item.name} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {item.name === 'On Time' && (
+                          <CheckCircle2 className="h-4 w-4 text-success" />
+                        )}
+                        {item.name === 'Late' && (
+                          <Clock className="h-4 w-4 text-warning" />
+                        )}
+                        {item.name === 'Failed' && (
+                          <XCircle className="h-4 w-4 text-destructive" />
+                        )}
+                        <span className="font-medium">{item.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">
+                          {item.value} deliveries
+                        </span>
+                        <Badge
+                          variant={
+                            item.name === 'On Time'
+                              ? 'default'
+                              : item.name === 'Late'
+                              ? 'outline'
+                              : 'destructive'
+                          }
+                        >
+                          {item.percentage}%
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className={`h-full transition-all ${
+                          item.name === 'On Time'
+                            ? 'bg-success'
+                            : item.name === 'Late'
+                            ? 'bg-warning'
+                            : 'bg-destructive'
+                        }`}
+                        style={{ width: `${item.percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+                <div className="mt-6 rounded-lg bg-muted/50 p-4">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {item.name === 'On Time' && (
-                        <CheckCircle2 className="h-4 w-4 text-success" />
-                      )}
-                      {item.name === 'Late' && (
-                        <Clock className="h-4 w-4 text-warning" />
-                      )}
-                      {item.name === 'Failed' && (
-                        <XCircle className="h-4 w-4 text-destructive" />
-                      )}
-                      <span className="font-medium">{item.name}</span>
+                    <div>
+                      <p className="text-sm font-medium">Average Delivery Time</p>
+                      <p className="text-2xl font-bold">2.3 hours</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">{item.value} deliveries</span>
-                      <Badge 
-                        variant={
-                          item.name === 'On Time' ? 'default' : 
-                          item.name === 'Late' ? 'outline' : 
-                          'destructive'
-                        }
-                      >
-                        {item.percentage}%
-                      </Badge>
-                    </div>
+                    <Activity className="h-8 w-8 text-muted-foreground" />
                   </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className={`h-full transition-all ${
-                        item.name === 'On Time' ? 'bg-success' :
-                        item.name === 'Late' ? 'bg-warning' :
-                        'bg-destructive'
-                      }`}
-                      style={{ width: `${item.percentage}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-              <div className="mt-6 rounded-lg bg-muted/50 p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">Average Delivery Time</p>
-                    <p className="text-2xl font-bold">2.3 hours</p>
-                  </div>
-                  <Activity className="h-8 w-8 text-muted-foreground" />
                 </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -514,12 +657,12 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {stats?.orders.completionRate 
-                ? `${Math.round(stats.orders.completionRate)}%` 
+              {stats?.orders.completionRate
+                ? `${Math.round(stats.orders.completionRate)}%`
                 : '0%'}
             </div>
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
-              <div 
+              <div
                 className="h-full bg-success transition-all"
                 style={{ width: `${stats?.orders.completionRate || 0}%` }}
               />

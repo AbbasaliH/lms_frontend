@@ -45,7 +45,36 @@ export default function ExpenseReportsPage() {
             View detailed expense analytics and insights
           </p>
         </div>
-        <Button variant="outline">
+        <Button
+          variant="outline"
+          onClick={() => {
+            const rows = [
+              ['Metric', 'Value'],
+              ['Total Expenses', stats?.totalAmount?.toString() || '0'],
+              ['Paid', stats?.paidAmount?.toString() || '0'],
+              ['Unpaid', stats?.unpaidAmount?.toString() || '0'],
+              ['Average Expense', stats?.averageExpenseAmount?.toString() || '0'],
+              ['Pending Approval', stats?.pendingApprovalCount?.toString() || '0'],
+              ['', ''],
+              ['Category', 'Amount', 'Count'],
+              ...categories.map((c: any) => [c.category, c.totalAmount?.toString() || '0', c.expenseCount?.toString() || '0']),
+              ['', ''],
+              ['Department', 'Amount', 'Count'],
+              ...departments.map((d: any) => [d.departmentName || d.departmentId, d.totalAmount?.toString() || '0', d.expenseCount?.toString() || '0']),
+              ['', ''],
+              ['Month', 'Amount', 'Count'],
+              ...trends.map((t: any) => [t.month, t.totalAmount?.toString() || '0', t.expenseCount?.toString() || '0']),
+            ];
+            const csv = rows.map((r) => r.join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `expense-report-${dateRange.startDate}-to-${dateRange.endDate}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+          }}
+        >
           <FileDown className="h-4 w-4 mr-2" />
           Export Report
         </Button>

@@ -89,11 +89,11 @@ export default function FinancePage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
+          <Button variant="outline" disabled>
             <FileText className="h-4 w-4" />
             Generate Report
           </Button>
-          <Button>
+          <Button disabled>
             <Download className="h-4 w-4" />
             Export Data
           </Button>
@@ -116,42 +116,42 @@ export default function FinancePage() {
             <MetricCard
               title="Total Revenue"
               value={`₹${metrics.totalRevenue.toLocaleString()}`}
-              change={metrics.revenueChange}
+              change={metrics.revenueChange ?? 0}
               icon={DollarSign}
               trend="up"
             />
             <MetricCard
               title="Total Expenses"
               value={`₹${metrics.totalExpenses.toLocaleString()}`}
-              change={metrics.expenseChange}
+              change={metrics.expenseChange ?? 0}
               icon={TrendingDown}
               trend="down"
             />
             <MetricCard
               title="Net Profit"
               value={`₹${metrics.netProfit.toLocaleString()}`}
-              change={metrics.profitChange}
+              change={metrics.profitChange ?? 0}
               icon={TrendingUp}
               trend="up"
             />
             <MetricCard
               title="Profit Margin"
               value={`${metrics.profitMargin.toFixed(2)}%`}
-              change={metrics.profitChange}
+              change={metrics.profitChange ?? 0}
               icon={TrendingUp}
               trend="up"
             />
             <MetricCard
               title="Cash Flow"
-              value={`₹${metrics.cashFlow.toLocaleString()}`}
-              change={metrics.cashFlowChange}
+              value={`₹${(metrics.cashFlow ?? metrics.netProfit).toLocaleString()}`}
+              change={metrics.cashFlowChange ?? 0}
               icon={Wallet}
               trend="up"
             />
             <MetricCard
               title="Receivables"
               value={`₹${metrics.outstandingReceivables.toLocaleString()}`}
-              change={metrics.receivablesChange}
+              change={metrics.receivablesChange ?? 0}
               icon={DollarSign}
               trend="down"
             />

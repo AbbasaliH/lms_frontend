@@ -90,30 +90,23 @@ export default function OrdersPage() {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
 
-  // Fetch orders from API
+  // Fetch orders from API with filters
   const { data: ordersData, isLoading, error, refetch } = useQuery({
-    queryKey: ['orders'],
-    queryFn: ordersApi.getOrders,
+    queryKey: ['orders', searchQuery, statusFilter, currentPage, pageSize],
+    queryFn: () => ordersApi.getOrders({
+      search: searchQuery || undefined,
+      status: statusFilter !== 'all' ? statusFilter : undefined,
+      page: currentPage,
+      limit: pageSize,
+    }),
   });
 
   const orders = ordersData?.data || [];
-
-  // Filter orders
-  const filteredOrders = orders.filter((order) => {
-    const matchesSearch =
-      order.user.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.product.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || order.status.toLowerCase() === statusFilter.toLowerCase();
-    return matchesSearch && matchesStatus;
-  });
-
-  // Pagination
-  const totalPages = Math.ceil(filteredOrders.length / pageSize);
-  const paginatedOrders = filteredOrders.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
+  // Use API pagination if available, otherwise fall back to client-side
+  const apiPagination = (ordersData as any)?.data?.pagination;
+  const totalOrders = apiPagination?.total ?? orders.length;
+  const totalPages = apiPagination?.totalPages ?? Math.ceil(orders.length / pageSize);
+  const paginatedOrders = apiPagination ? orders : orders.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   // Mutations
   const updateStatusMutation = useMutation({
@@ -234,7 +227,7 @@ export default function OrdersPage() {
   const handleExport = () => {
     const csvContent = [
       ['Order ID', 'Customer', 'Phone', 'Product', 'Status', 'Amount', 'Date'].join(','),
-      ...filteredOrders.map((order) =>
+      ...orders.map((order: ApiOrder) =>
         [
           order.id,
           order.user.fullName,
@@ -364,7 +357,7 @@ export default function OrdersPage() {
                 Try Again
               </Button>
             </div>
-          ) : filteredOrders.length === 0 ? (
+          ) : orders.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12">
               <p className="text-muted-foreground mb-2">No orders found</p>
               <p className="text-sm text-muted-foreground">
@@ -372,6 +365,20 @@ export default function OrdersPage() {
                   ? 'Try adjusting your filters'
                   : 'Create your first order to get started'}
               </p>
+              {(searchQuery || statusFilter !== 'all') && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setStatusFilter('all');
+                    setCurrentPage(1);
+                  }}
+                  className="mt-2"
+                >
+                  Clear Filters
+                </Button>
+              )}
             </div>
           ) : (
             <>
@@ -581,8 +588,8 @@ export default function OrdersPage() {
                 <div className="flex items-center justify-between pt-4 border-t">
                   <p className="text-sm text-muted-foreground">
                     Showing {(currentPage - 1) * pageSize + 1} to{' '}
-                    {Math.min(currentPage * pageSize, filteredOrders.length)} of{' '}
-                    {filteredOrders.length} orders
+                    {Math.min(currentPage * pageSize, totalOrders)} of{' '}
+                    {totalOrders} orders
                   </p>
                   <div className="flex gap-2">
                     <Button

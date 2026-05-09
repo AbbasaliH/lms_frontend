@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { format } from 'date-fns';
 import { CalendarIcon, Plus, Trash2, Loader2 } from 'lucide-react';
@@ -38,6 +38,7 @@ import { inventoryApi } from '@/lib/api/inventory';
 import type { CreatePurchaseOrderRequest, PurchaseOrderItem } from '@/lib/types/supplier';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { toast } from 'sonner';
 
 interface CreatePurchaseOrderDialogProps {
   children?: React.ReactNode;
@@ -77,14 +78,6 @@ export function CreatePurchaseOrderDialog({ children }: CreatePurchaseOrderDialo
   });
 
   const supplierId = watch('supplierId');
-
-  // Debug log to check supplier data
-  useEffect(() => {
-    if (suppliersData) {
-      console.log('Suppliers loaded:', suppliersData.data.suppliers?.length || 0);
-      console.log('Suppliers data:', suppliersData.data.suppliers);
-    }
-  }, [suppliersData]);
 
   // Calculate totals
   const subtotal = items.reduce((sum, item) => sum + item.total, 0);
@@ -138,17 +131,17 @@ export function CreatePurchaseOrderDialog({ children }: CreatePurchaseOrderDialo
 
   const onSubmit = async (data: any) => {
     if (!data.supplierId) {
-      alert('Please select a supplier');
+      toast.error('Please select a supplier');
       return;
     }
 
     if (items.length === 0) {
-      alert('Please add at least one item');
+      toast.error('Please add at least one item');
       return;
     }
 
     if (!expectedDelivery) {
-      alert('Please select expected delivery date');
+      toast.error('Please select expected delivery date');
       return;
     }
 
@@ -222,7 +215,6 @@ export function CreatePurchaseOrderDialog({ children }: CreatePurchaseOrderDialo
               <Select
                 value={supplierId || ''}
                 onValueChange={(value) => {
-                  console.log('Supplier selected:', value);
                   setValue('supplierId', value, { shouldValidate: true });
                 }}
               >

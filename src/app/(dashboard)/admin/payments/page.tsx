@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -106,24 +106,7 @@ export default function PaymentsPage() {
     isLoading,
     error,
     refetch,
-  } = useQuery({
-    queryKey: ['payments', { page: currentPage, limit: pageSize }],
-    queryFn: async () => {
-      // Mock data for now - replace with actual API call
-      return {
-        success: true,
-        data: {
-          payments: [] as ApiPayment[],
-          pagination: {
-            total: 0,
-            page: currentPage,
-            limit: pageSize,
-            totalPages: 0,
-          },
-        },
-      };
-    },
-  });
+  } = usePayments({ page: currentPage, limit: pageSize });
 
   const payments = paymentsData?.data.payments || [];
   const pagination = paymentsData?.data.pagination;
@@ -154,8 +137,11 @@ export default function PaymentsPage() {
   };
 
   const handleDownloadReceipt = (payment: ApiPayment) => {
-    toast.info('Downloading receipt...');
-    // TODO: Implement receipt download
+    if ((payment as any).receiptUrl) {
+      window.open((payment as any).receiptUrl, '_blank');
+    } else {
+      toast.info('Receipt not available for this payment');
+    }
   };
 
   const handleExport = () => {

@@ -21,6 +21,7 @@ import {
   TrendingUp,
   BarChart3,
   ChevronRight,
+  Receipt,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store/auth-store';
 import { useState } from 'react';
@@ -43,6 +44,7 @@ const adminNavItems: NavItem[] = [
   { title: 'Inventory', href: '/admin/inventory', icon: Warehouse },
   { title: 'Suppliers', href: '/admin/suppliers', icon: Building2 },
   { title: 'Payments', href: '/admin/payments', icon: CreditCard },
+  { title: 'Expenses', href: '/admin/expenses', icon: Receipt },
   { title: 'Pricing', href: '/admin/pricing', icon: DollarSign },
   { title: 'Subscriptions', href: '/admin/subscriptions', icon: Repeat },
   { title: 'Queries', href: '/admin/queries', icon: MessageSquare },

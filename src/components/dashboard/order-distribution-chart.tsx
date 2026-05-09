@@ -75,12 +75,13 @@ export function OrderDistributionChart({ data = mockData }: OrderDistributionCha
                 borderRadius: '8px',
                 fontSize: '12px',
               }}
-              formatter={(value: number | undefined, name: string | undefined) => {
-                if (!value) return ['0', name || 'Value'];
+              formatter={(value, name) => {
+                const numValue = typeof value === 'number' ? value : 0;
+                if (!numValue) return ['0', name || 'Value'];
                 if (name === 'revenue') {
-                  return [`₹${value.toLocaleString()}`, 'Revenue'];
+                  return [`₹${numValue.toLocaleString()}`, 'Revenue'];
                 }
-                return [value, 'Orders'];
+                return [numValue, 'Orders'];
               }}
             />
             <Legend 

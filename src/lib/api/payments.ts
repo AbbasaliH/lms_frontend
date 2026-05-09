@@ -8,6 +8,11 @@ import type {
   PaymentFilters,
   CreatePaymentRequest,
   RefundPaymentRequest,
+  CreateWalletOrderRequest,
+  CreateWalletOrderResponse,
+  CreateOrderPaymentRequest,
+  VerifyPaymentRequest,
+  VerifyPaymentResponse,
 } from '../types/payment';
 
 export const paymentsApi = {
@@ -52,5 +57,18 @@ export const paymentsApi = {
 
   downloadReceipt: async (paymentId: string): Promise<Blob> => {
     return apiClient.getBlob(`/payments/${paymentId}/receipt`);
+  },
+
+  // Razorpay Payment Methods
+  createWalletOrder: async (data: CreateWalletOrderRequest): Promise<CreateWalletOrderResponse> => {
+    return apiClient.post<CreateWalletOrderResponse>('/payment/wallet/create-order', data);
+  },
+
+  createOrderPayment: async (data: CreateOrderPaymentRequest): Promise<CreateWalletOrderResponse> => {
+    return apiClient.post<CreateWalletOrderResponse>('/payment/order/create-order', data);
+  },
+
+  verifyPayment: async (data: VerifyPaymentRequest): Promise<VerifyPaymentResponse> => {
+    return apiClient.post<VerifyPaymentResponse>('/payment/verify', data);
   },
 };

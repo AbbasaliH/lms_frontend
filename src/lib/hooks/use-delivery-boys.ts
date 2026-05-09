@@ -129,3 +129,21 @@ export const useAssignOrder = () => {
     },
   });
 };
+
+// Update delivery boy order status
+export const useUpdateDeliveryBoyOrderStatus = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { orderId: string; status: string }) =>
+      deliveryBoyApi.updateOrderStatus(data),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['delivery-boy-orders'] });
+      toast.success(response.message || 'Order status updated successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update order status');
+    },
+  });
+};

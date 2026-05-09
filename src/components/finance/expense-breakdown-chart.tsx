@@ -12,10 +12,35 @@ import {
 import { useExpenseBreakdown } from '@/lib/hooks/use-finance';
 import { Loader2 } from 'lucide-react';
 
+const COLORS = [
+  'hsl(var(--chart-1))',
+  'hsl(var(--chart-2))',
+  'hsl(var(--chart-3))',
+  'hsl(var(--chart-4))',
+  'hsl(var(--chart-5))',
+  '#8884d8',
+  '#82ca9d',
+  '#ffc658',
+  '#ff7300',
+  '#00C49F',
+];
+
 export function ExpenseBreakdownChart() {
   const { data, isLoading } = useExpenseBreakdown();
 
-  const chartData = data?.data || [];
+  const rawData = data?.data || [];
+  
+  // Compute total for percentage calculation
+  const totalAmount = rawData.reduce((sum, item) => sum + item.totalAmount, 0);
+  
+  // Map to chart-friendly format with percentages and colors
+  const chartData = rawData.map((item, index) => ({
+    category: item.category,
+    totalAmount: item.totalAmount,
+    count: item.count,
+    percentage: totalAmount > 0 ? (item.totalAmount / totalAmount) * 100 : 0,
+    color: COLORS[index % COLORS.length],
+  }));
 
   return (
     <Card>
@@ -41,7 +66,7 @@ export function ExpenseBreakdownChart() {
                     label={({ percentage }) => `${percentage.toFixed(1)}%`}
                     outerRadius={120}
                     fill="#8884d8"
-                    dataKey="amount"
+                    dataKey="totalAmount"
                   >
                     {chartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
@@ -54,7 +79,10 @@ export function ExpenseBreakdownChart() {
                       borderRadius: '8px',
                       fontSize: '12px',
                     }}
-                    formatter={(value: number) => `₹${value.toLocaleString()}`}
+                    formatter={(value: number, name: string, props: any) => {
+                      const item = chartData[props?.payload?.index ?? 0];
+                      return [`₹${value.toLocaleString()} (${item?.percentage.toFixed(1)}%)`, item?.category || ''];
+                    }}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -72,9 +100,9 @@ export function ExpenseBreakdownChart() {
                       <span className="text-muted-foreground">{entry.category}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">₹{entry.amount.toLocaleString()}</span>
+                      <span className="font-medium">₹{entry.totalAmount.toLocaleString()}</span>
                       <span className="text-xs text-muted-foreground">
-                        ({entry.percentage}%)
+                        ({entry.percentage.toFixed(1)}%)
                       </span>
                     </div>
                   </div>

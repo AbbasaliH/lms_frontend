@@ -103,19 +103,27 @@ export interface RefundPaymentRequest {
 }
 
 export interface PaymentStatsData {
-  totalRevenue: number;
-  totalTransactions: number;
-  pendingPayments: number;
-  failedPayments: number;
-  refundedAmount: number;
-  todayRevenue: number;
-  monthRevenue: number;
-  averageTransactionValue: number;
-  paymentMethodBreakdown: {
-    method: PaymentMethod;
-    count: number;
-    amount: number;
+  totalPayments: number;
+  totalAmount: number;
+  totalRefunded: number;
+  byStatus: {
+    status: string;
+    _sum: { amount: number };
+    _count: { id: number };
   }[];
+  byMethod: {
+    method: string;
+    _sum: { amount: number };
+    _count: { id: number };
+  }[];
+  // Optional frontend-computed / extended fields
+  totalRevenue?: number;
+  averageTransactionValue?: number;
+  todayRevenue?: number;
+  monthRevenue?: number;
+  totalTransactions?: number;
+  pendingPayments?: number;
+  failedPayments?: number;
 }
 
 export interface PaymentStatsResponse {
@@ -124,6 +132,39 @@ export interface PaymentStatsResponse {
 }
 
 export interface PaymentResponse {
+  success: boolean;
+  message: string;
+  data: ApiPayment;
+}
+
+// Razorpay Payment Types
+export interface CreateWalletOrderRequest {
+  amount: number;
+}
+
+export interface CreateWalletOrderResponse {
+  success: boolean;
+  data: {
+    id: string;
+    amount: number;
+    currency: string;
+  };
+}
+
+export interface CreateOrderPaymentRequest {
+  orderId: string;
+}
+
+export interface VerifyPaymentRequest {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+  type: 'wallet' | 'order';
+  appOrderId: string;
+  amount: number;
+}
+
+export interface VerifyPaymentResponse {
   success: boolean;
   message: string;
   data: ApiPayment;

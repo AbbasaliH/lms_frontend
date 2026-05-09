@@ -38,9 +38,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { usePurchaseOrders } from '@/lib/hooks/use-suppliers';
-import type { PurchaseOrderStatus, PaymentStatus } from '@/lib/types/supplier';
+import {
+  usePurchaseOrders,
+  useApprovePurchaseOrder,
+  useUpdatePurchaseOrderStatus,
+} from '@/lib/hooks/use-suppliers';
+import { PurchaseOrderStatus, PaymentStatus } from '@/lib/types/supplier';
 import { CreatePurchaseOrderDialog } from '@/components/purchase-orders/create-purchase-order-dialog';
+import { toast } from 'sonner';
 
 const getStatusBadge = (status: PurchaseOrderStatus) => {
   const statusConfig: Record<PurchaseOrderStatus, { variant: 'outline' | 'default' | 'destructive'; label: string; className: string }> = {
@@ -90,6 +95,9 @@ export default function ItemsOrdersPage() {
   const limit = 20;
 
   const { data, isLoading, isError, error } = usePurchaseOrders({ page, limit });
+
+  const approveMutation = useApprovePurchaseOrder();
+  const updateStatusMutation = useUpdatePurchaseOrderStatus();
 
   const filteredOrders = data?.data.orders?.filter((order) =>
     order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -187,9 +195,17 @@ export default function ItemsOrdersPage() {
             className="pl-9"
           />
         </div>
-        <Button variant="outline" className="w-full sm:w-auto">
+        <Button
+          variant="outline"
+          className="w-full sm:w-auto"
+          onClick={() => {
+            setSearchQuery('');
+            setPage(1);
+          }}
+          disabled={!searchQuery}
+        >
           <Filter className="h-4 w-4" />
-          Filter
+          Clear
         </Button>
       </div>
 
@@ -302,30 +318,82 @@ export default function ItemsOrdersPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => router.push(`/admin/items-orders/${order.id}`)}>
                               <Eye className="mr-2 h-4 w-4" />
                               View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                const csvContent = [
+                                  ['Order Number', 'Supplier', 'Order Date', 'Expected Delivery', 'Items', 'Total', 'Status'].join(','),
+                                  [
+                                    order.orderNumber,
+                                    order.supplier?.companyName || 'N/A',
+                                    order.orderDate,
+                                    order.expectedDelivery,
+                                    order.items.map((i) => `${i.itemName} (${i.quantity})`).join('; '),
+                                    order.grandTotal.toFixed(2),
+                                    order.status,
+                                  ].join(','),
+                                ].join('\n');
+                                const blob = new Blob([csvContent], { type: 'text/csv' });
+                                const url = window.URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `${order.orderNumber}-invoice.csv`;
+                                a.click();
+                                window.URL.revokeObjectURL(url);
+                                toast.success('Invoice downloaded');
+                              }}
+                            >
                               <Download className="mr-2 h-4 w-4" />
                               Download Invoice
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem>Edit Order</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => router.push(`/admin/items-orders/${order.id}/edit`)}>
+                              Edit Order
+                            </DropdownMenuItem>
                             {order.status === 'PENDING' && (
                               <>
-                                <DropdownMenuItem className="text-success">
+                                <DropdownMenuItem
+                                  className="text-success"
+                                  onClick={() =>
+                                    approveMutation.mutate(order.id, {
+                                      onError: () => toast.error('Failed to approve order'),
+                                    })
+                                  }
+                                >
                                   <CheckCircle2 className="mr-2 h-4 w-4" />
                                   Approve Order
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive">
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() =>
+                                    updateStatusMutation.mutate(
+                                      { id: order.id, status: PurchaseOrderStatus.REJECTED },
+                                      {
+                                        onError: () => toast.error('Failed to reject order'),
+                                      }
+                                    )
+                                  }
+                                >
                                   <XCircle className="mr-2 h-4 w-4" />
                                   Reject Order
                                 </DropdownMenuItem>
                               </>
                             )}
                             {order.status === 'PARTIALLY_RECEIVED' && (
-                              <DropdownMenuItem className="text-success">
+                              <DropdownMenuItem
+                                className="text-success"
+                                onClick={() =>
+                                  updateStatusMutation.mutate(
+                                    { id: order.id, status: PurchaseOrderStatus.RECEIVED },
+                                    {
+                                      onError: () => toast.error('Failed to mark as received'),
+                                    }
+                                  )
+                                }
+                              >
                                 <CheckCircle2 className="mr-2 h-4 w-4" />
                                 Mark as Received
                               </DropdownMenuItem>

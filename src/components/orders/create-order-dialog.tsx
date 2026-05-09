@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { OrderForm } from '@/components/forms/order-form';
 import type { OrderFormData } from '@/lib/schemas/order-schema';
+import { useCreateOrder } from '@/lib/hooks/use-user-orders';
 import { toast } from 'sonner';
 
 interface CreateOrderDialogProps {
@@ -20,22 +21,16 @@ interface CreateOrderDialogProps {
 
 export function CreateOrderDialog({ children, onSuccess }: CreateOrderDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const createOrder = useCreateOrder();
 
   const handleSubmit = async (data: OrderFormData) => {
-    setIsSubmitting(true);
     try {
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      console.log('Order data:', data);
-      toast.success('Order created successfully!');
+      await createOrder.mutateAsync(data);
       setIsOpen(false);
       onSuccess?.();
-    } catch (error) {
-      toast.error('Failed to create order');
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to create order');
       console.error('Error creating order:', error);
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -51,7 +46,7 @@ export function CreateOrderDialog({ children, onSuccess }: CreateOrderDialogProp
             Create a new order for a customer. Add services and set delivery details.
           </DialogDescription>
         </DialogHeader>
-        <OrderForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+        <OrderForm onSubmit={handleSubmit} isSubmitting={createOrder.isPending} />
       </DialogContent>
     </Dialog>
   );

@@ -158,3 +158,25 @@ export const useAssignInteraction = () => {
     },
   });
 };
+
+// ==================== ANALYTICS ====================
+export const useTopCustomers = () => {
+  return useQuery({
+    queryKey: ['top-customers'],
+    queryFn: () => customerApi.getTopCustomers(),
+  });
+};
+
+export const useCustomerSegments = () => {
+  return useQuery({
+    queryKey: ['customer-segments'],
+    queryFn: () => customerApi.getCustomerSegments(),
+  });
+};
+
+export const useChurnRiskCustomers = () => {
+  return useQuery({
+    queryKey: ['churn-risk-customers'],
+    queryFn: () => customerApi.getChurnRiskCustomers(),
+  });
+};

@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { financeApi } from '@/lib/api/finance';
-import type { DateRange, TimePeriod, CashFlowPeriod } from '@/lib/types/finance';
+import type { DateRange } from '@/lib/types/finance';
 
 // Get overall financial metrics
 export const useFinancialMetrics = (dateRange?: DateRange) => {
@@ -23,10 +23,10 @@ export const useProfitLoss = (dateRange?: DateRange) => {
 };
 
 // Get revenue vs expense trends
-export const useRevenueExpenseTrends = (period: TimePeriod = 'monthly') => {
+export const useRevenueExpenseTrends = (dateRange?: DateRange) => {
   return useQuery({
-    queryKey: ['revenue-expense-trends', period],
-    queryFn: () => financeApi.getTrends(period),
+    queryKey: ['revenue-expense-trends', dateRange],
+    queryFn: () => financeApi.getTrends(dateRange),
     staleTime: 60000,
   });
 };
@@ -41,10 +41,10 @@ export const useExpenseBreakdown = (dateRange?: DateRange) => {
 };
 
 // Get cash flow data
-export const useCashFlow = (period: CashFlowPeriod = 'monthly') => {
+export const useCashFlow = (dateRange?: DateRange) => {
   return useQuery({
-    queryKey: ['cash-flow', period],
-    queryFn: () => financeApi.getCashFlow(period),
+    queryKey: ['cash-flow', dateRange],
+    queryFn: () => financeApi.getCashFlow(dateRange),
     staleTime: 60000,
   });
 };

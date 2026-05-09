@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import {
   AlertTriangle,
@@ -39,6 +39,7 @@ import {
 import { AddInventoryDialog } from '@/components/inventory/add-inventory-dialog';
 import { inventoryApi } from '@/lib/api/inventory';
 import type { ApiInventoryItem } from '@/lib/types/inventory';
+import { toast } from 'sonner';
 
 const getStatusBadge = (item: ApiInventoryItem) => {
   if (item.status === 'OUT_OF_STOCK' || item.quantity === 0) {
@@ -77,6 +78,7 @@ const getStatusBadge = (item: ApiInventoryItem) => {
 
 export default function InventoryPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const limit = 20;
@@ -85,6 +87,47 @@ export default function InventoryPage() {
     queryKey: ['inventory', page, limit],
     queryFn: () => inventoryApi.getInventory(page, limit),
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => inventoryApi.deleteInventory(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      toast.success('Inventory item deleted successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete inventory item');
+    },
+  });
+
+  const restockMutation = useMutation({
+    mutationFn: (data: { inventoryId: string; quantity: number; type: string; notes: string }) =>
+      inventoryApi.createInventoryTransaction(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      toast.success('Item restocked successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to restock item');
+    },
+  });
+
+  const handleDelete = (id: string) => {
+    if (window.confirm('Are you sure you want to delete this inventory item?')) {
+      deleteMutation.mutate(id);
+    }
+  };
+
+  const handleRestock = (item: ApiInventoryItem) => {
+    const quantity = window.prompt(`Enter quantity to restock for ${item.itemName}:`, '0');
+    if (quantity && !isNaN(Number(quantity)) && Number(quantity) > 0) {
+      restockMutation.mutate({
+        inventoryId: item.id,
+        quantity: Number(quantity),
+        type: 'IN',
+        notes: 'Manual restock',
+      });
+    }
+  };
 
   const filteredItems = data?.data.items.filter((item) =>
     item.itemName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -177,9 +220,17 @@ export default function InventoryPage() {
             className="pl-9"
           />
         </div>
-        <Button variant="outline" className="w-full sm:w-auto">
+        <Button
+          variant="outline"
+          className="w-full sm:w-auto"
+          onClick={() => {
+            setSearchQuery('');
+            setPage(1);
+          }}
+          disabled={!searchQuery}
+        >
           <Filter className="h-4 w-4" />
-          Filter
+          Clear
         </Button>
       </div>
 
@@ -279,16 +330,25 @@ export default function InventoryPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem>View Details</DropdownMenuItem>
-                            <DropdownMenuItem>Edit Item</DropdownMenuItem>
-                            <DropdownMenuItem>Restock</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => router.push(`/admin/inventory/${item.id}`)}>
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => router.push(`/admin/inventory/${item.id}/edit`)}>
+                              Edit Item
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleRestock(item)}>
+                              Restock
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => router.push('/admin/suppliers')}>
                               <PhoneCall className="mr-2 h-4 w-4" />
                               Contact Supplier
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive">
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => handleDelete(item.id)}
+                            >
                               Delete Item
                             </DropdownMenuItem>
                           </DropdownMenuContent>

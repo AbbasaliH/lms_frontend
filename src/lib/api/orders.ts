@@ -4,8 +4,18 @@ import { apiClient } from './client';
 import type { OrdersResponse, ApiOrder } from '../types/api';
 
 export const ordersApi = {
-  getOrders: async (): Promise<OrdersResponse> => {
-    return apiClient.get<OrdersResponse>('/admin/orders');
+  getOrders: async (filters?: { search?: string; status?: string; page?: number; limit?: number }): Promise<OrdersResponse> => {
+    const params = new URLSearchParams();
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.status && filters.status !== 'all') params.append('status', filters.status);
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+    const query = params.toString();
+    return apiClient.get<OrdersResponse>(`/admin/orders${query ? `?${query}` : ''}`);
+  },
+
+  createOrder: async (data: any): Promise<{ success: boolean; data: ApiOrder }> => {
+    return apiClient.post<{ success: boolean; data: ApiOrder }>('/admin/orders', data);
   },
 
   updateOrderStatus: async (orderId: string, status: string): Promise<{ success: boolean; data: ApiOrder }> => {

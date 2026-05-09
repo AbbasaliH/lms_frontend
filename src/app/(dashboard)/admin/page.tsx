@@ -87,7 +87,7 @@ export default function AdminDashboard() {
     refetch: refetchOrders 
   } = useQuery({
     queryKey: ['orders'],
-    queryFn: ordersApi.getOrders,
+    queryFn: () => ordersApi.getOrders(),
   });
 
   // Extract data from API response

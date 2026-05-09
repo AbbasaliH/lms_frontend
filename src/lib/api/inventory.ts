@@ -23,4 +23,30 @@ export const inventoryApi = {
   deleteInventory: async (id: string): Promise<{ success: boolean; message: string }> => {
     return apiClient.delete(`/inventory/${id}`);
   },
+
+  // ==================== STATS & ANALYTICS ====================
+  getInventoryStats: async (): Promise<any> => {
+    return apiClient.get('/inventory/stats');
+  },
+
+  getLowStock: async (): Promise<any> => {
+    return apiClient.get('/inventory/low-stock');
+  },
+
+  // ==================== SINGLE ITEM & TRANSACTIONS ====================
+  getInventoryById: async (id: string): Promise<any> => {
+    return apiClient.get(`/inventory/${id}`);
+  },
+
+  createInventoryTransaction: async (data: any): Promise<any> => {
+    return apiClient.post('/inventory/transactions', data);
+  },
+
+  getInventoryTransactions: async (id: string): Promise<any> => {
+    return apiClient.get(`/inventory/${id}/transactions`);
+  },
+
+  bulkUpdateInventory: async (data: any): Promise<any> => {
+    return apiClient.post('/inventory/bulk-update', data);
+  },
 };

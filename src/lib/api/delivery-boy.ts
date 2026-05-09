@@ -122,5 +122,10 @@ export const deliveryBoyApi = {
   getSchedule: async (): Promise<any> => {
     return apiClient.get('/delivery-boy/schedule');
   },
+
+  // Update order status (delivery boy)
+  updateOrderStatus: async (data: { orderId: string; status: string }): Promise<{ success: boolean; message: string }> => {
+    return apiClient.put('/delivery-boy/orders/status', data);
+  },
 };
 
