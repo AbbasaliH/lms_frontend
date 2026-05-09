@@ -18,6 +18,10 @@ export const ordersApi = {
     return apiClient.post<{ success: boolean; data: ApiOrder }>('/admin/orders', data);
   },
 
+  createOrder: async (data: any): Promise<{ success: boolean; data: ApiOrder }> => {
+    return apiClient.post<{ success: boolean; data: ApiOrder }>('/orders', data);
+  },
+
   updateOrderStatus: async (orderId: string, status: string): Promise<{ success: boolean; data: ApiOrder }> => {
     return apiClient.patch<{ success: boolean; data: ApiOrder }>(`/admin/orders/${orderId}/status`, { status });
   },

@@ -13,6 +13,8 @@ import { OrderForm } from '@/components/forms/order-form';
 import type { OrderFormData } from '@/lib/schemas/order-schema';
 import { useCreateOrder } from '@/lib/hooks/use-user-orders';
 import { toast } from 'sonner';
+import { ordersApi } from '@/lib/api/orders';
+import { servicesApi } from '@/lib/api/services';
 
 interface CreateOrderDialogProps {
   children?: React.ReactNode;

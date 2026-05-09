@@ -227,6 +227,7 @@ function CollapsibleSection({ section, pathname, isSearching, searchQuery }: Col
                   <TooltipTrigger asChild>
                     <Link
                       href={item.href}
+                      prefetch={true}
                       className={cn(
                         'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
                         'hover:bg-accent/60',

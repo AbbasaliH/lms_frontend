@@ -1,11 +1,11 @@
 // Customer API Services
 
 import { apiClient } from './client';
-import type { 
-  Customer, 
-  CustomerFilters, 
-  CreateCustomerRequest, 
-  UpdateCustomerRequest, 
+import type {
+  Customer,
+  CustomerFilters,
+  CreateCustomerRequest,
+  UpdateCustomerRequest,
   // CustomerInteractionsResponse 
 } from '../types/customer';
 
